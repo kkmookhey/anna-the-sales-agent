@@ -40,4 +40,24 @@ describe('DealRepo', () => {
     expect(cmd.input.TableName).toBe('deals');
     expect(cmd.input.Item).toEqual(deal);
   });
+
+  it('putMeta/getMeta round-trips a value under a _meta key', async () => {
+    send.mockResolvedValueOnce({});
+    const repo = new DealRepo(fakeDoc, 'deals');
+    await repo.putMeta('canvas_id', 'F123');
+    expect(send.mock.calls[0]![0].input.Item).toEqual({ deal_id: '_meta#canvas_id', value: 'F123' });
+
+    send.mockResolvedValueOnce({ Item: { deal_id: '_meta#canvas_id', value: 'F123' } });
+    expect(await repo.getMeta('canvas_id')).toBe('F123');
+  });
+
+  it('listDeals excludes _meta# items', async () => {
+    send.mockResolvedValueOnce({
+      Items: [deal, { deal_id: '_meta#canvas_id', value: 'F123' }],
+      LastEvaluatedKey: undefined,
+    });
+    const repo = new DealRepo(fakeDoc, 'deals');
+    const out = await repo.listDeals();
+    expect(out).toEqual([deal]);
+  });
 });

@@ -45,4 +45,22 @@ describe('SlackClient', () => {
     const slack = new SlackClient('xoxb-test');
     await expect(slack.postStaging('C1', 'hi')).rejects.toThrow(/channel_not_found/);
   });
+
+  it('upsertCanvas creates a canvas when no id is given and returns the new id', async () => {
+    const fetchMock = mockFetch({ ok: true, canvas_id: 'F123' });
+    const slack = new SlackClient('xoxb-test');
+    const id = await slack.upsertCanvas(null, 'NI Sales — Pipeline', '# board');
+    expect(id).toBe('F123');
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://slack.com/api/canvases.create');
+  });
+
+  it('upsertCanvas edits the existing canvas when an id is given', async () => {
+    const fetchMock = mockFetch({ ok: true });
+    const slack = new SlackClient('xoxb-test');
+    const id = await slack.upsertCanvas('F123', 'NI Sales — Pipeline', '# board v2');
+    expect(id).toBe('F123');
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://slack.com/api/canvases.edit');
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.canvas_id).toBe('F123');
+  });
 });

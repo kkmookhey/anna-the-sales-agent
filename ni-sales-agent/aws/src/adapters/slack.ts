@@ -43,4 +43,19 @@ export class SlackClient {
       (m) => m.user !== undefined && approvedUserIds.includes(m.user) && (m.text ?? '').trim() === token,
     );
   }
+
+  async upsertCanvas(canvasId: string | null, title: string, markdown: string): Promise<string> {
+    if (!canvasId) {
+      const json = await this.call('canvases.create', {
+        title,
+        document_content: { type: 'markdown', markdown },
+      });
+      return String(json.canvas_id);
+    }
+    await this.call('canvases.edit', {
+      canvas_id: canvasId,
+      changes: [{ operation: 'replace', document_content: { type: 'markdown', markdown } }],
+    });
+    return canvasId;
+  }
 }
