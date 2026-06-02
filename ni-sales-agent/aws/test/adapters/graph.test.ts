@@ -81,6 +81,18 @@ describe('GraphClient', () => {
               toRecipients: [], ccRecipients: [],
               receivedDateTime: '2026-06-02T14:00:00Z', bodyPreview: 'mid', hasAttachments: false,
             },
+            {
+              id: 'our-draft', conversationId: 'conv-1', subject: 'Re: VAPT', isDraft: true,
+              from: { emailAddress: { address: 'sales@networkintelligence.ai' } },
+              toRecipients: [], ccRecipients: [],
+              receivedDateTime: '2026-06-02T20:00:00Z', bodyPreview: 'our draft', hasAttachments: false,
+            },
+            {
+              id: 'our-sent', conversationId: 'conv-1', subject: 'Re: VAPT',
+              from: { emailAddress: { address: 'sales@networkintelligence.ai' } },
+              toRecipients: [], ccRecipients: [],
+              receivedDateTime: '2026-06-02T19:00:00Z', bodyPreview: 'our sent', hasAttachments: false,
+            },
           ],
         },
       },
@@ -89,8 +101,10 @@ describe('GraphClient', () => {
     const g = new GraphClient(creds, 'sales@networkintelligence.ai');
     const latest = await g.latestInboundInConversation('conv-1', '2026-06-02T00:00:00Z');
 
+    // 'our-draft' (20:00) and 'our-sent' (19:00) are newer but excluded — returns the real inbound 'new'.
     expect(latest!.id).toBe('new');
     const url = fetchMock.mock.calls[1]![0] as string;
+    expect(url).toContain('/mailFolders/inbox/messages');
     expect(url).not.toContain('%24orderby');
   });
 
