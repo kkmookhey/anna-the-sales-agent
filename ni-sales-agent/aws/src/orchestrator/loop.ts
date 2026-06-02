@@ -27,7 +27,7 @@ export interface HubSpotPort {
   createDeal(props: { dealname: string; pipeline: string; dealstage: string; hubspot_owner_id: string; amount?: string }): Promise<string>;
 }
 export interface JudgePort {
-  scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string }>;
+  scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string; company: string }>;
   assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string }>;
   draftFollowup(i: { company: string; contactName: string; followupNumber: number; scopeSummary: Record<string, unknown> }): Promise<{ draft_subject: string; draft_body_html: string }>;
   classifyProposalReply(i: { subject: string; reply: string }): Promise<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }>;
@@ -242,6 +242,7 @@ async function advanceDeal(
       });
       deal.service_lines = scoped.service_lines;
       deal.scope.service_lines = scoped.service_lines;
+      if (scoped.company?.trim()) deal.company = scoped.company.trim(); // prefer the real company over the email-domain guess
       return stageDraft(deal, t.nextStage, scoped.draft_subject, scoped.draft_body_html, 'scoping_staged', deps, nowIso, null);
     }
 
@@ -301,7 +302,7 @@ async function stageDraft(
     `Outlook draft: ${draftRef}\n` +
     `Approve by: sending the draft${nextStage === 'PO_PENDING_APPROVAL' ? '  |  replying SHIP-IT for HubSpot writes' : ''}\n` +
     `Flags: ${deal.flags.length ? deal.flags.map((f) => f.reason).join(', ') : 'none'}\n\n` +
-    `> *Subject:* ${subject}\n> ${bodyHtml.replace(/<[^>]+>/g, '').slice(0, 1500)}`;
+    `> *Subject:* ${subject}\n> ${htmlToText(bodyHtml).slice(0, 1500)}`;
 
   return { text, staged: true, advanced: false };
 }
@@ -398,6 +399,18 @@ function addBusinessDays(from: Date, days: number): Date {
   }
   return d;
 }
+/** Strip HTML tags and decode the common entities so the Slack preview reads cleanly. */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+
 function domainToCompany(addr: string): string {
   const domain = addr.split('@')[1] ?? '';
   const base = domain.split('.')[0] ?? domain;

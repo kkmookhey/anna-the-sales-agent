@@ -19,12 +19,14 @@ describe('JudgmentService', () => {
         service_lines: ['pentest_mobile', 'pentest_api', 'compliance'],
         draft_subject: 'Re: VAPT Enquiry',
         draft_body_html: '<p>Hi Shashank,</p>',
+        company: 'Novelty Wealth',
       }),
     );
     const out = await svc.scopeEnquiry(inbound);
     expect(out.service_lines).toContain('pentest_mobile');
     expect(out.draft_subject).toMatch(/VAPT/);
     expect(out.draft_body_html).toContain('Shashank');
+    expect(out.company).toBe('Novelty Wealth');
   });
 
   it('assessSufficiency returns a verdict with missing fields', async () => {

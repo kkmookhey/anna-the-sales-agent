@@ -6,6 +6,7 @@ export interface ScopeResult {
   service_lines: string[];
   draft_subject: string;
   draft_body_html: string;
+  company: string; // best-effort prospect company from the signature/body; '' if unknown
 }
 
 export interface SufficiencyResult {
@@ -34,7 +35,9 @@ export class JudgmentService {
     bodyPreview: string;
   }): Promise<ScopeResult> {
     const system = `${loadSkill('enquiry-scoping')}\n\n${JSON_RULE}\n` +
-      'Output keys: service_lines (string[]), draft_subject (string), draft_body_html (string).';
+      'Output keys: service_lines (string[]), draft_subject (string), draft_body_html (string), ' +
+      "company (string — the prospect's company name from their signature/body; empty string if not stated). " +
+      'Do not infer the company from a free-email domain like gmail.com.';
     return this.judge.askJson<ScopeResult>(
       system,
       JSON.stringify({ from_name: inbound.fromName, subject: inbound.subject, body: inbound.bodyPreview }),

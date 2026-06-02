@@ -57,7 +57,7 @@ export class NiSalesAgentStack extends Stack {
         MAILBOX: 'sales@networkintelligence.ai',
         SLACK_CHANNEL_ID: 'C0B7KEP8D8W',
         APPROVAL_TOKEN: 'SHIP-IT',
-        DRY_RUN: 'true',
+        DRY_RUN: 'false',
         FOLLOWUP_CADENCE_DAYS: '3,7,14',
         MAX_FOLLOWUPS: '3',
         BUSINESS_HOURS_ONLY: 'false',

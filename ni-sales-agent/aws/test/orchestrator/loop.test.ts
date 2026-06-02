@@ -29,7 +29,7 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
     slack: { postStaging: vi.fn().mockResolvedValue('111.222'), detectApproval: vi.fn().mockResolvedValue(false), upsertCanvas: vi.fn().mockResolvedValue('F123') },
     hubspot: { createDeal: vi.fn().mockResolvedValue('99001') },
     judge: {
-      scopeEnquiry: vi.fn().mockResolvedValue({ service_lines: ['pentest_mobile'], draft_subject: 'Re: VAPT Enquiry', draft_body_html: '<p>Hi</p>' }),
+      scopeEnquiry: vi.fn().mockResolvedValue({ service_lines: ['pentest_mobile'], draft_subject: 'Re: VAPT Enquiry', draft_body_html: '<p>Hi</p>', company: 'Novelty Wealth' }),
       assessSufficiency: vi.fn().mockResolvedValue({ sufficient: true, missing: [], assumptions: ['~95 screens'] }),
       buildProposalContent: vi.fn().mockResolvedValue({ company: 'Novelty Wealth', contactName: 'Shashank', serviceLines: ['pentest_mobile'], titleLine: 'Mobile VAPT Proposal for Novelty Wealth', understanding: ['x'], scopeRows: [{ line: 'Mobile', detail: 'A+i' }], assumptions: ['~95 screens'], approach: ['OWASP MASVS'], deliverables: ['report'], timeline: '4w', whyNi: ['CERT-In'], commercials: { mode: 'placeholder', text: 'TBC' }, nextSteps: ['NDA'] }),
       draftFollowup: vi.fn().mockResolvedValue({ draft_subject: 'Re: Proposal', draft_body_html: '<p>More info</p>' }),
@@ -65,6 +65,7 @@ describe('runLoop — NEW enquiry slice', () => {
     expect(stored.stage).toBe('SCOPING_PENDING_APPROVAL');
     expect(stored.contact_email).toBe('kkmookhey@gmail.com');
     expect(stored.deal_id).toBe('conv-1');
+    expect(stored.company).toBe('Novelty Wealth'); // from the signature, not the gmail domain
     expect(summary.staged).toBe(1);
   });
 
