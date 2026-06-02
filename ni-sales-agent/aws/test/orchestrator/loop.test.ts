@@ -137,6 +137,57 @@ describe('runLoop — SCOPE_REVIEW proposal slice', () => {
     expect(stored.stage).toBe('PROPOSAL_PENDING_APPROVAL');
     expect(stored.proposal.deck_path).toBe('s3://ni-decks/proposals/novelty-wealth-v1.pptx');
     expect(stored.proposal.version).toBe(1);
+    expect(stored.last_inbound_at).toBe('2026-06-02T12:00:00Z'); // consumed the reply it ran sufficiency on
+  });
+});
+
+describe('runLoop — reply consumption', () => {
+  it('SCOPING_PENDING_APPROVAL advances to SCOPING_SENT without consuming a pending client reply', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.graph.wasReplySent as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'SCOPING_PENDING_APPROVAL', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'm1', last_inbound_at: '2026-06-02T20:42:00Z', next_followup_date: null, followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, actions: [], flags: [] },
+    ]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'reply-1', conversationId: 'conv-1', subject: 'Re: VAPT Enquiry', fromName: 'Shashank',
+      fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-02T22:23:00Z',
+      bodyPreview: 'answers', bodyFull: '<p>answers</p>', hasAttachments: false,
+    });
+
+    await runLoop(deps);
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+    expect(stored.stage).toBe('SCOPING_SENT');
+    expect(stored.last_inbound_at).toBe('2026-06-02T20:42:00Z'); // reply NOT consumed by the replySent-driven advance
+  });
+
+  it('SCOPING_SENT advances to SCOPE_REVIEW without consuming the reply', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.graph.wasReplySent as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'SCOPING_SENT', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'm1', last_inbound_at: '2026-06-02T20:42:00Z', next_followup_date: null, followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, actions: [], flags: [] },
+    ]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'reply-1', conversationId: 'conv-1', subject: 'Re: VAPT Enquiry', fromName: 'Shashank',
+      fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-02T22:23:00Z',
+      bodyPreview: 'answers', bodyFull: '<p>answers</p>', hasAttachments: false,
+    });
+
+    await runLoop(deps);
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+    expect(stored.stage).toBe('SCOPE_REVIEW');
+    expect(stored.last_inbound_at).toBe('2026-06-02T20:42:00Z'); // reply NOT consumed; SCOPE_REVIEW will pick it up next run
   });
 });
 

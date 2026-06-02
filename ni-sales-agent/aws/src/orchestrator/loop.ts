@@ -182,6 +182,9 @@ async function advanceDeal(
       if (deal.stage === 'SCOPE_REVIEW' && latest) {
         const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: htmlToText(latest.bodyFull) });
         const branch = resolveScopeReview(verdict.sufficient);
+        // consume the reply we just ran sufficiency on (persisted by stageDraft/stageProposal)
+        deal.last_inbound_id = latest.id;
+        deal.last_inbound_at = latest.receivedDateTime;
         if (branch.kind === 'STAGE_CLARIFY') {
           return stageDraft(deal, branch.nextStage, verdict.clarifying_subject ?? `Re: ${latest.subject}`, verdict.clarifying_body_html ?? '', 'clarify_staged', deps, nowIso, latest);
         }
@@ -224,10 +227,6 @@ async function advanceDeal(
     case 'ADVANCE': {
       const from = deal.stage;
       deal.stage = t.nextStage;
-      if (newInbound && latest) {
-        deal.last_inbound_id = latest.id;
-        deal.last_inbound_at = latest.receivedDateTime;
-      }
       if (t.nextStage === 'PROPOSAL_SENT') deal.next_followup_date = addBusinessDays(deps.now, config.followupCadenceDays[Math.min(deal.followup_count, config.followupCadenceDays.length - 1)]!).toISOString();
       deal.actions.push(action(from, t.nextStage, 'advance', `signal-driven advance`, nowIso));
       await repo.putDeal(deal);
