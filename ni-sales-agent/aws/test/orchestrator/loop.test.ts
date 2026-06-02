@@ -32,7 +32,8 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
       scopeEnquiry: vi.fn().mockResolvedValue({ service_lines: ['pentest_mobile'], draft_subject: 'Re: VAPT Enquiry', draft_body_html: '<p>Hi</p>' }),
       assessSufficiency: vi.fn().mockResolvedValue({ sufficient: true, missing: [], assumptions: ['~95 screens'] }),
       buildProposalContent: vi.fn().mockResolvedValue({ company: 'Novelty Wealth', contactName: 'Shashank', serviceLines: ['pentest_mobile'], titleLine: 'Mobile VAPT Proposal for Novelty Wealth', understanding: ['x'], scopeRows: [{ line: 'Mobile', detail: 'A+i' }], assumptions: ['~95 screens'], approach: ['OWASP MASVS'], deliverables: ['report'], timeline: '4w', whyNi: ['CERT-In'], commercials: { mode: 'placeholder', text: 'TBC' }, nextSteps: ['NDA'] }),
-      draftFollowup: vi.fn(),
+      draftFollowup: vi.fn().mockResolvedValue({ draft_subject: 'Re: Proposal', draft_body_html: '<p>More info</p>' }),
+      classifyProposalReply: vi.fn().mockResolvedValue({ kind: 'none' }),
     },
     repo: {
       listDeals: vi.fn(async () => Object.values(stored)),
@@ -131,5 +132,56 @@ describe('runLoop — SCOPE_REVIEW proposal slice', () => {
     expect(stored.stage).toBe('PROPOSAL_PENDING_APPROVAL');
     expect(stored.proposal.deck_path).toBe('s3://ni-decks/proposals/novelty-wealth-v1.pptx');
     expect(stored.proposal.version).toBe(1);
+  });
+});
+
+describe('runLoop — PROPOSAL_SENT reply slice', () => {
+  it('PROPOSAL_SENT + PO reply stages a threaded PO approval and stores the thread ts', async () => {
+    const deps = baseDeps({});
+    (deps.judge.classifyProposalReply as ReturnType<typeof vi.fn>).mockResolvedValue({ kind: 'po' });
+    (deps.slack.postStaging as ReturnType<typeof vi.fn>).mockResolvedValue('900.111');
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'PROPOSAL_SENT', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'm1', last_inbound_at: '2026-06-02T10:00:00Z', next_followup_date: null, followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, actions: [], flags: [] },
+    ]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm2', conversationId: 'conv-1', subject: 'Re: Proposal', fromName: 'Shashank',
+      fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-03T09:00:00Z',
+      bodyPreview: 'Approved, PO attached, please proceed', hasAttachments: false,
+    });
+
+    await runLoop(deps);
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+    expect(stored.stage).toBe('PO_PENDING_APPROVAL');
+    expect(stored.actions.some((a: { note: string }) => a.note === 'thread:900.111')).toBe(true);
+    expect(deps.hubspot.createDeal).not.toHaveBeenCalled(); // not yet — needs SHIP-IT
+  });
+
+  it('PO_PENDING_APPROVAL + SHIP-IT in the stored thread writes the HubSpot deal and moves to WON', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (deps.slack.detectApproval as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'PO_PENDING_APPROVAL', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'm2', last_inbound_at: '2026-06-03T09:00:00Z', next_followup_date: null, followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null,
+        actions: [{ ts: '2026-06-03T09:05:00Z', type: 'po_staged', stage_from: 'PROPOSAL_SENT', stage_to: 'PO_PENDING_APPROVAL', note: 'thread:900.111' }],
+        flags: [] },
+    ]);
+
+    await runLoop(deps);
+    expect(deps.slack.detectApproval).toHaveBeenCalledWith('C1', '900.111', 'SHIP-IT', ['U1']);
+    expect(deps.hubspot.createDeal).toHaveBeenCalledOnce();
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+    expect(stored.stage).toBe('WON');
   });
 });

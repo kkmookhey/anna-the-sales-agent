@@ -50,6 +50,7 @@ export async function buildDeps(env: Record<string, string | undefined> = proces
       assessSufficiency: (i) => judge.assessSufficiency(i),
       draftFollowup: (i) => judge.draftFollowup(i),
       buildProposalContent: (i) => judge.buildProposalContent(i),
+      classifyProposalReply: (i) => judge.classifyProposalReply(i),
     },
     repo,
     s3,

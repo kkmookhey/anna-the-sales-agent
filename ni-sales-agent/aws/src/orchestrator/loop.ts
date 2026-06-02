@@ -1,7 +1,7 @@
 import type { Config } from '../config.js';
 import type { Deal, Stage } from '../state/types.js';
 import { emptyScope } from '../state/types.js';
-import { decideTransition, resolveScopeReview } from './transitions.js';
+import { decideTransition, resolveScopeReview, resolveProposalReply } from './transitions.js';
 import { scanForInjection, verifiedRecipient } from '../gates/gates.js';
 import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
@@ -30,6 +30,7 @@ export interface JudgePort {
   scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string }>;
   assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string }>;
   draftFollowup(i: { company: string; contactName: string; followupNumber: number; scopeSummary: Record<string, unknown> }): Promise<{ draft_subject: string; draft_body_html: string }>;
+  classifyProposalReply(i: { subject: string; reply: string }): Promise<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }>;
   buildProposalContent(i: { company: string; contactName: string; serviceLines: string[]; scope: Record<string, unknown>; assumptions: string[] }): Promise<ProposalContent>;
 }
 export interface RepoPort {
@@ -188,6 +189,35 @@ async function advanceDeal(
           return stageProposal(deal, deps, nowIso, latest, verdict);
         }
       }
+      if (deal.stage === 'PROPOSAL_SENT' && latest) {
+        const { kind } = await judge.classifyProposalReply({ subject: latest.subject, reply: latest.bodyPreview });
+        // consume the reply so we don't reclassify it next run
+        deal.last_inbound_id = latest.id;
+        deal.last_inbound_at = latest.receivedDateTime;
+        const branch = resolveProposalReply(kind);
+
+        if (branch.kind === 'ADVANCE' && branch.nextStage === 'MEETING_BOOKED') {
+          const from = deal.stage;
+          deal.stage = 'MEETING_BOOKED';
+          deal.actions.push(action(from, 'MEETING_BOOKED', 'meeting_booked', 'prospect proposed/accepted a meeting; human handoff', nowIso));
+          await repo.putDeal(deal);
+          return { text: `*Meeting* ${deal.company}: prospect wants to meet — automation off, human handoff. \`${deal.deal_id}\``, staged: false, advanced: true };
+        }
+        if (branch.kind === 'ADVANCE' && branch.nextStage === 'PO_PENDING_APPROVAL') {
+          return stagePoApproval(deal, deps, nowIso);
+        }
+        if (branch.kind === 'STAGE_FOLLOWUP') {
+          const f = await judge.draftFollowup({
+            company: deal.company, contactName: deal.contact_name,
+            followupNumber: deal.followup_count + 1,
+            scopeSummary: deal.scope as unknown as Record<string, unknown>,
+          });
+          return stageDraft(deal, 'FOLLOWUP_PENDING_APPROVAL', f.draft_subject, f.draft_body_html, 'clarification_staged', deps, nowIso, latest);
+        }
+        // kind === 'none' → record the consumed reply, no action
+        await repo.putDeal(deal);
+        return null;
+      }
       return null;
     }
 
@@ -337,6 +367,20 @@ async function stageProposal(
     `Assumptions: ${deal.assumptions.join('; ') || 'none'}`;
 
   return { text, staged: true, advanced: false };
+}
+
+async function stagePoApproval(deal: Deal, deps: LoopDeps, nowIso: string): Promise<AdvanceResult> {
+  const { config, slack, repo } = deps;
+  const from = deal.stage;
+  deal.stage = 'PO_PENDING_APPROVAL';
+  const msg =
+    `*[STAGING — HubSpot write]* ${deal.company} / ${deal.contact_name}\n` +
+    `Deal: \`${deal.deal_id}\`  Stage: ${from} → PO_PENDING_APPROVAL\n` +
+    `Prospect signalled a PO / go-ahead. Reply *${config.approvalToken}* in THIS thread to log the deal to HubSpot (Closed-Won).`;
+  const ts = await slack.postStaging(config.slackChannelId, msg);
+  deal.actions.push(action(from, 'PO_PENDING_APPROVAL', 'po_staged', `thread:${ts}`, nowIso));
+  await repo.putDeal(deal);
+  return { text: `*PO received* ${deal.company} → PO_PENDING_APPROVAL (awaiting ${config.approvalToken})`, staged: true, advanced: false };
 }
 
 function withinBusinessHours(now: Date): boolean {
