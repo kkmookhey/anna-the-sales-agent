@@ -36,6 +36,12 @@ describe('JudgmentService', () => {
     expect(out.missing).toContain('user roles');
   });
 
+  it('classifyProposalReply returns the model\'s classification kind', async () => {
+    const svc = new JudgmentService(judgeReturning({ kind: 'po' }));
+    const out = await svc.classifyProposalReply({ subject: 'Re: Proposal', reply: 'Approved — PO attached, please proceed.' });
+    expect(out.kind).toBe('po');
+  });
+
   it('buildProposalContent merges identity fields and returns slide content', async () => {
     const svc = new JudgmentService(
       judgeReturning({

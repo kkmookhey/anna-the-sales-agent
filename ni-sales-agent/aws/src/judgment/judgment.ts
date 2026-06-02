@@ -65,6 +65,20 @@ export class JudgmentService {
     return this.judge.askJson<FollowupResult>(system, JSON.stringify(input));
   }
 
+  async classifyProposalReply(input: { subject: string; reply: string }): Promise<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }> {
+    const system =
+      `You classify a prospect's email reply to a sales proposal we sent. ${JSON_RULE}\n` +
+      'Choose exactly one kind: "meeting" (they propose or accept a call/meeting), ' +
+      '"po" (they send a purchase order or clearly accept / say they are proceeding), ' +
+      '"clarification" (they ask a question or request changes/more info), ' +
+      '"none" (auto-reply, out-of-office, unsubscribe, or irrelevant). ' +
+      'Output key: kind (one of "meeting","po","clarification","none").';
+    return this.judge.askJson<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }>(
+      system,
+      JSON.stringify(input),
+    );
+  }
+
   async buildProposalContent(input: {
     company: string;
     contactName: string;
