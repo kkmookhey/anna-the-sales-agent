@@ -59,7 +59,7 @@ export class NiSalesAgentStack extends Stack {
         DRY_RUN: 'true',
         FOLLOWUP_CADENCE_DAYS: '3,7,14',
         MAX_FOLLOWUPS: '3',
-        BUSINESS_HOURS_ONLY: 'true',
+        BUSINESS_HOURS_ONLY: 'false',
         DEALS_TABLE: deals.tableName,
         DECKS_BUCKET: decks.bucketName,
         HUBSPOT_PIPELINE: 'default',
