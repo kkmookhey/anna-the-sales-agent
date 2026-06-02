@@ -44,7 +44,11 @@ export class NiSalesAgentStack extends Stack {
       // concurrency limit of 10 and won't allow reserving below that. The 20-min
       // cron + idempotent stage guards make overlapping ticks a non-issue. Request a
       // concurrency quota increase and re-add `reservedConcurrentExecutions: 1` later if desired.
-      bundling: { format: nodejs.OutputFormat.ESM, commandHooks: {
+      bundling: { format: nodejs.OutputFormat.ESM,
+        // pptxgenjs is CJS and does a dynamic require('fs') when embedding images, which
+        // doesn't survive esbuild's ESM bundle. Keep it as a real installed module instead.
+        nodeModules: ['pptxgenjs'],
+        commandHooks: {
         beforeBundling: () => [],
         beforeInstall: () => [],
         afterBundling: (i: string, o: string) => [
