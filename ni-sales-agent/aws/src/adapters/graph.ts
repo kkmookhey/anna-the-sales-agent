@@ -65,15 +65,21 @@ export class GraphClient {
     return encodeURIComponent(this.mailbox);
   }
 
+  private odata(v: string): string {
+    return v.replace(/'/g, "''");
+  }
+
   async listInbound(sinceIso: string): Promise<InboundMessage[]> {
     const filter = encodeURIComponent(`receivedDateTime ge ${sinceIso}`);
     const select = 'id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments';
     const path =
       `/users/${this.box()}/mailFolders/inbox/messages` +
-      `?$filter=${filter}&$orderby=receivedDateTime desc&$top=25&$select=${select}`;
+      `?$filter=${filter}&$top=25&$select=${select}`;
     const res = await this.call(path);
     const json = (await res.json()) as { value: GraphMessage[] };
-    return json.value.map(toInbound);
+    return json.value
+      .map(toInbound)
+      .sort((a, b) => b.receivedDateTime.localeCompare(a.receivedDateTime));
   }
 
   async createDraftReply(messageId: string, bodyHtml: string): Promise<string> {
@@ -91,7 +97,7 @@ export class GraphClient {
 
   async wasReplySent(conversationId: string, afterIso: string): Promise<boolean> {
     const filter = encodeURIComponent(
-      `conversationId eq '${conversationId}' and sentDateTime ge ${afterIso}`,
+      `conversationId eq '${this.odata(conversationId)}' and sentDateTime ge ${afterIso}`,
     );
     const path = `/users/${this.box()}/mailFolders/sentitems/messages?$filter=${filter}&$top=1&$select=id`;
     const res = await this.call(path);
@@ -104,15 +110,19 @@ export class GraphClient {
     afterIso: string,
   ): Promise<InboundMessage | null> {
     const filter = encodeURIComponent(
-      `conversationId eq '${conversationId}' and receivedDateTime gt ${afterIso}`,
+      `conversationId eq '${this.odata(conversationId)}' and receivedDateTime gt ${afterIso}`,
     );
     const select = 'id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments';
     const path =
       `/users/${this.box()}/messages?$filter=${filter}` +
-      `&$orderby=receivedDateTime desc&$top=1&$select=${select}`;
+      `&$top=10&$select=${select}`;
     const res = await this.call(path);
     const json = (await res.json()) as { value: GraphMessage[] };
-    return json.value.length ? toInbound(json.value[0]!) : null;
+    if (!json.value.length) return null;
+    const newest = json.value.reduce((a, b) =>
+      b.receivedDateTime.localeCompare(a.receivedDateTime) > 0 ? b : a,
+    );
+    return toInbound(newest);
   }
 
   async addAttachment(messageId: string, name: string, content: Buffer): Promise<void> {

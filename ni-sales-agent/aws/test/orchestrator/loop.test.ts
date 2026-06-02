@@ -53,6 +53,9 @@ describe('runLoop — NEW enquiry slice', () => {
     const summary = await runLoop(deps);
 
     expect(deps.judge.scopeEnquiry).toHaveBeenCalledOnce();
+    expect(deps.judge.scopeEnquiry).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: 'VAPT Enquiry', bodyPreview: 'Mobile VAPT, CERT-In, 30 days' }),
+    );
     expect(deps.graph.createDraftReply).toHaveBeenCalledWith('m1', '<p>Hi</p>');
     expect(deps.slack.postStaging).toHaveBeenCalledOnce();
     expect(deps.repo.putDeal).toHaveBeenCalledOnce();

@@ -55,6 +55,58 @@ describe('GraphClient', () => {
     expect(listUrl).toContain('receivedDateTime%20ge%202026-06-02T00%3A00%3A00Z');
   });
 
+  it('latestInboundInConversation returns the newest message via client-side sort and omits $orderby', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      {
+        json: {
+          value: [
+            {
+              id: 'old', conversationId: 'conv-1', subject: 'Re: VAPT',
+              from: { emailAddress: { name: 'Sam', address: 'sam@acme.example' } },
+              toRecipients: [], ccRecipients: [],
+              receivedDateTime: '2026-06-02T10:00:00Z', bodyPreview: 'old', hasAttachments: false,
+            },
+            {
+              id: 'new', conversationId: 'conv-1', subject: 'Re: VAPT',
+              from: { emailAddress: { name: 'Sam', address: 'sam@acme.example' } },
+              toRecipients: [], ccRecipients: [],
+              receivedDateTime: '2026-06-02T18:00:00Z', bodyPreview: 'new', hasAttachments: false,
+            },
+            {
+              id: 'mid', conversationId: 'conv-1', subject: 'Re: VAPT',
+              from: { emailAddress: { name: 'Sam', address: 'sam@acme.example' } },
+              toRecipients: [], ccRecipients: [],
+              receivedDateTime: '2026-06-02T14:00:00Z', bodyPreview: 'mid', hasAttachments: false,
+            },
+          ],
+        },
+      },
+    ]);
+
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const latest = await g.latestInboundInConversation('conv-1', '2026-06-02T00:00:00Z');
+
+    expect(latest!.id).toBe('new');
+    const url = fetchMock.mock.calls[1]![0] as string;
+    expect(url).not.toContain('%24orderby');
+  });
+
+  it('escapes single quotes in conversationId for wasReplySent and omits $orderby', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { value: [{ id: 'x' }] } },
+    ]);
+
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const sent = await g.wasReplySent("conv'1", '2026-06-02T00:00:00Z');
+
+    expect(sent).toBe(true);
+    const url = fetchMock.mock.calls[1]![0] as string;
+    expect(url).not.toContain('%24orderby');
+    expect(decodeURIComponent(url)).toContain("conversationId eq 'conv''1'");
+  });
+
   it('throws a useful error when Graph returns non-ok', async () => {
     mockFetchSequence([
       { json: { access_token: 'tok', expires_in: 3600 } },

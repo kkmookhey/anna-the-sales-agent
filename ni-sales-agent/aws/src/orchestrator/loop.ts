@@ -92,6 +92,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const inbound = await graph.listInbound(deps.lastRunIso);
   const deals = await repo.listDeals();
   const byConversation = new Map(deals.map((d) => [d.deal_id, d]));
+  const originatingContext = new Map<string, { subject: string; bodyPreview: string }>();
   const stagingLines: string[] = [];
 
   for (const m of inbound) {
@@ -124,10 +125,11 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       flags: flags.map((reason) => ({ ts: nowIso, message_id: m.id, reason })),
     };
     byConversation.set(fresh.deal_id, fresh);
+    originatingContext.set(fresh.deal_id, { subject: m.subject, bodyPreview: m.bodyPreview });
   }
 
   for (const deal of byConversation.values()) {
-    const line = await advanceDeal(deal, deps, nowIso);
+    const line = await advanceDeal(deal, deps, nowIso, originatingContext.get(deal.deal_id) ?? null);
     if (line) {
       stagingLines.push(line.text);
       if (line.staged) summary.staged++;
@@ -150,7 +152,12 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
 
 interface AdvanceResult { text: string; staged: boolean; advanced: boolean }
 
-async function advanceDeal(deal: Deal, deps: LoopDeps, nowIso: string): Promise<AdvanceResult | null> {
+async function advanceDeal(
+  deal: Deal,
+  deps: LoopDeps,
+  nowIso: string,
+  originating: { subject: string; bodyPreview: string } | null,
+): Promise<AdvanceResult | null> {
   const { config, graph, slack, hubspot, judge, repo } = deps;
 
   const replySent =
@@ -198,7 +205,11 @@ async function advanceDeal(deal: Deal, deps: LoopDeps, nowIso: string): Promise<
     }
 
     case 'STAGE_SCOPING': {
-      const scoped = await judge.scopeEnquiry({ fromName: deal.contact_name, subject: subjectFor(deal), bodyPreview: deal.scope.environment ?? lastBodyPreview(deal) });
+      const scoped = await judge.scopeEnquiry({
+        fromName: deal.contact_name,
+        subject: originating?.subject ?? '',
+        bodyPreview: originating?.bodyPreview ?? '',
+      });
       deal.service_lines = scoped.service_lines;
       deal.scope.service_lines = scoped.service_lines;
       return stageDraft(deal, t.nextStage, scoped.draft_subject, scoped.draft_body_html, 'scoping_staged', deps, nowIso, null);
@@ -351,10 +362,4 @@ function domainToCompany(addr: string): string {
 function slackThreadFor(deal: Deal): string {
   const po = [...deal.actions].reverse().find((a) => a.note.startsWith('thread:'));
   return po ? po.note.replace('thread:', '') : '';
-}
-function subjectFor(deal: Deal): string {
-  return deal.actions.length ? deal.actions[deal.actions.length - 1]!.note : 'Enquiry';
-}
-function lastBodyPreview(deal: Deal): string {
-  return deal.scope.environment ?? deal.company;
 }
