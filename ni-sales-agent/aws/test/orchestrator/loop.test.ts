@@ -18,7 +18,9 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
         {
           id: 'm1', conversationId: 'conv-1', subject: 'VAPT Enquiry', fromName: 'Shashank',
           fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com', 'sales@networkintelligence.ai'],
-          receivedDateTime: '2026-06-02T14:07:28Z', bodyPreview: 'Mobile VAPT, CERT-In, 30 days', hasAttachments: false,
+          receivedDateTime: '2026-06-02T14:07:28Z', bodyPreview: 'Mobile VAPT, CERT-In, 30 days',
+          bodyFull: '<p>Mobile VAPT for Android and iOS, CERT-In report, ~95 screens. Regards, Shashank, Novelty Wealth</p>',
+          hasAttachments: false,
         },
       ]),
       createDraftReply: vi.fn().mockResolvedValue('draft-1'),
@@ -55,7 +57,7 @@ describe('runLoop — NEW enquiry slice', () => {
 
     expect(deps.judge.scopeEnquiry).toHaveBeenCalledOnce();
     expect(deps.judge.scopeEnquiry).toHaveBeenCalledWith(
-      expect.objectContaining({ subject: 'VAPT Enquiry', bodyPreview: 'Mobile VAPT, CERT-In, 30 days' }),
+      expect.objectContaining({ subject: 'VAPT Enquiry', bodyPreview: expect.stringContaining('Android and iOS') }),
     );
     expect(deps.graph.createDraftReply).toHaveBeenCalledWith('m1', '<p>Hi</p>');
     expect(deps.slack.postStaging).toHaveBeenCalledOnce();
@@ -76,7 +78,8 @@ describe('runLoop — NEW enquiry slice', () => {
         id: 'm2', conversationId: 'conv-2', subject: 'Test', fromName: 'Suraj',
         fromAddress: 'suraj.palsamkar@networkintelligence.ai',
         participants: ['suraj.palsamkar@networkintelligence.ai', 'sales@networkintelligence.ai'],
-        receivedDateTime: '2026-06-02T06:48:47Z', bodyPreview: 'This is Test ID.', hasAttachments: true,
+        receivedDateTime: '2026-06-02T06:48:47Z', bodyPreview: 'This is Test ID.',
+        bodyFull: '<p>This is Test ID.</p>', hasAttachments: true,
       },
     ]);
     const summary = await runLoop(deps);
@@ -118,7 +121,8 @@ describe('runLoop — SCOPE_REVIEW proposal slice', () => {
     (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 'm2', conversationId: 'conv-1', subject: 'Re: VAPT', fromName: 'Shashank',
       fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-02T12:00:00Z',
-      bodyPreview: 'Answers: 3 roles, staging env, first VAPT', hasAttachments: false,
+      bodyPreview: 'Answers: 3 roles, staging env, first VAPT',
+      bodyFull: '<p>Answers: 3 roles, staging env, first VAPT</p>', hasAttachments: false,
     });
 
     await runLoop(deps);
@@ -153,7 +157,8 @@ describe('runLoop — PROPOSAL_SENT reply slice', () => {
     (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 'm2', conversationId: 'conv-1', subject: 'Re: Proposal', fromName: 'Shashank',
       fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-03T09:00:00Z',
-      bodyPreview: 'Approved, PO attached, please proceed', hasAttachments: false,
+      bodyPreview: 'Approved, PO attached, please proceed',
+      bodyFull: '<p>Approved, PO attached, please proceed</p>', hasAttachments: false,
     });
 
     await runLoop(deps);

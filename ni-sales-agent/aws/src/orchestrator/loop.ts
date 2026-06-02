@@ -16,7 +16,7 @@ export interface GraphPort {
 }
 export interface InboundMessage {
   id: string; conversationId: string; subject: string; fromName: string; fromAddress: string;
-  participants: string[]; receivedDateTime: string; bodyPreview: string; hasAttachments: boolean;
+  participants: string[]; receivedDateTime: string; bodyPreview: string; bodyFull: string; hasAttachments: boolean;
 }
 export interface SlackPort {
   postStaging(channelId: string, text: string, threadTs?: string): Promise<string>;
@@ -72,7 +72,7 @@ const INTERNAL_DOMAIN = 'networkintelligence.ai';
 
 function isGenuineEnquiry(m: InboundMessage): boolean {
   const internal = m.fromAddress.endsWith(`@${INTERNAL_DOMAIN}`);
-  const hasContent = m.bodyPreview.trim().length > 20;
+  const hasContent = htmlToText(m.bodyFull).trim().length > 20;
   return !internal && hasContent;
 }
 
@@ -93,7 +93,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const inbound = await graph.listInbound(deps.lastRunIso);
   const deals = await repo.listDeals();
   const byConversation = new Map(deals.map((d) => [d.deal_id, d]));
-  const originatingContext = new Map<string, { subject: string; bodyPreview: string }>();
+  const originatingContext = new Map<string, { subject: string; body: string }>();
   const stagingLines: string[] = [];
 
   for (const m of inbound) {
@@ -126,7 +126,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       flags: flags.map((reason) => ({ ts: nowIso, message_id: m.id, reason })),
     };
     byConversation.set(fresh.deal_id, fresh);
-    originatingContext.set(fresh.deal_id, { subject: m.subject, bodyPreview: m.bodyPreview });
+    originatingContext.set(fresh.deal_id, { subject: m.subject, body: htmlToText(m.bodyFull) });
   }
 
   for (const deal of byConversation.values()) {
@@ -157,7 +157,7 @@ async function advanceDeal(
   deal: Deal,
   deps: LoopDeps,
   nowIso: string,
-  originating: { subject: string; bodyPreview: string } | null,
+  originating: { subject: string; body: string } | null,
 ): Promise<AdvanceResult | null> {
   const { config, graph, slack, hubspot, judge, repo } = deps;
 
@@ -180,7 +180,7 @@ async function advanceDeal(
   switch (t.kind) {
     case 'NOOP': {
       if (deal.stage === 'SCOPE_REVIEW' && latest) {
-        const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: latest.bodyPreview });
+        const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: htmlToText(latest.bodyFull) });
         const branch = resolveScopeReview(verdict.sufficient);
         if (branch.kind === 'STAGE_CLARIFY') {
           return stageDraft(deal, branch.nextStage, verdict.clarifying_subject ?? `Re: ${latest.subject}`, verdict.clarifying_body_html ?? '', 'clarify_staged', deps, nowIso, latest);
@@ -190,7 +190,7 @@ async function advanceDeal(
         }
       }
       if (deal.stage === 'PROPOSAL_SENT' && latest) {
-        const { kind } = await judge.classifyProposalReply({ subject: latest.subject, reply: latest.bodyPreview });
+        const { kind } = await judge.classifyProposalReply({ subject: latest.subject, reply: htmlToText(latest.bodyFull) });
         // consume the reply so we don't reclassify it next run
         deal.last_inbound_id = latest.id;
         deal.last_inbound_at = latest.receivedDateTime;
@@ -238,7 +238,7 @@ async function advanceDeal(
       const scoped = await judge.scopeEnquiry({
         fromName: deal.contact_name,
         subject: originating?.subject ?? '',
-        bodyPreview: originating?.bodyPreview ?? '',
+        bodyPreview: originating?.body ?? '',
       });
       deal.service_lines = scoped.service_lines;
       deal.scope.service_lines = scoped.service_lines;

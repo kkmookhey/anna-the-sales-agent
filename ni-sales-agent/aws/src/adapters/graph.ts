@@ -13,6 +13,7 @@ export interface InboundMessage {
   participants: string[];
   receivedDateTime: string;
   bodyPreview: string;
+  bodyFull: string;
   hasAttachments: boolean;
 }
 
@@ -71,7 +72,7 @@ export class GraphClient {
 
   async listInbound(sinceIso: string): Promise<InboundMessage[]> {
     const filter = encodeURIComponent(`receivedDateTime ge ${sinceIso}`);
-    const select = 'id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments';
+    const select = 'id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,hasAttachments';
     const path =
       `/users/${this.box()}/mailFolders/inbox/messages` +
       `?$filter=${filter}&$top=25&$select=${select}`;
@@ -112,7 +113,7 @@ export class GraphClient {
     const filter = encodeURIComponent(
       `conversationId eq '${this.odata(conversationId)}' and receivedDateTime gt ${afterIso}`,
     );
-    const select = 'id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments';
+    const select = 'id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,hasAttachments';
     const path =
       `/users/${this.box()}/messages?$filter=${filter}` +
       `&$top=10&$select=${select}`;
@@ -146,6 +147,7 @@ interface GraphMessage {
   ccRecipients?: { emailAddress?: { address?: string } }[];
   receivedDateTime: string;
   bodyPreview: string;
+  body?: { contentType?: string; content?: string };
   hasAttachments: boolean;
 }
 
@@ -165,6 +167,7 @@ function toInbound(m: GraphMessage): InboundMessage {
     participants,
     receivedDateTime: m.receivedDateTime,
     bodyPreview: m.bodyPreview ?? '',
+    bodyFull: m.body?.content ?? '',
     hasAttachments: m.hasAttachments,
   };
 }
