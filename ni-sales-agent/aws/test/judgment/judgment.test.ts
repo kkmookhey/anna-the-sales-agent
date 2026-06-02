@@ -35,4 +35,33 @@ describe('JudgmentService', () => {
     expect(out.sufficient).toBe(false);
     expect(out.missing).toContain('user roles');
   });
+
+  it('buildProposalContent merges identity fields and returns slide content', async () => {
+    const svc = new JudgmentService(
+      judgeReturning({
+        titleLine: 'Mobile Application VAPT Proposal for Novelty Wealth',
+        understanding: ['SEBI-regulated; CERT-In report needed within 30 days'],
+        scopeRows: [{ line: 'Mobile VAPT', detail: 'Android + iOS, ~95 screens' }],
+        assumptions: ['~95 screens as stated'],
+        approach: ['OWASP MASVS/MSTG', 'Authenticated testing with SSL pinning left enabled'],
+        deliverables: ['CERT-In compliant report', 'Re-test of fixed findings'],
+        timeline: '~4 weeks including re-test',
+        whyNi: ['CERT-In empanelled', 'BFSI/fintech experience'],
+        commercials: { mode: 'placeholder', text: 'Indicative pricing to be confirmed after scoping.' },
+        nextSteps: ['Sign NDA', 'Share builds + credentials'],
+      }),
+    );
+    const out = await svc.buildProposalContent({
+      company: 'Novelty Wealth',
+      contactName: 'Shashank Agrawal',
+      serviceLines: ['pentest_mobile', 'pentest_api', 'compliance'],
+      scope: {},
+      assumptions: ['~95 screens as stated'],
+    });
+    expect(out.company).toBe('Novelty Wealth');
+    expect(out.contactName).toBe('Shashank Agrawal');
+    expect(out.serviceLines).toContain('pentest_mobile');
+    expect(out.commercials.mode).toBe('placeholder');
+    expect(out.scopeRows[0]!.line).toBe('Mobile VAPT');
+  });
 });

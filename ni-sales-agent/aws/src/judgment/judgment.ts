@@ -1,5 +1,6 @@
 import type { BedrockJudge } from './bedrock.js';
 import { loadSkill } from './skills.js';
+import type { ProposalContent } from '../proposal/types.js';
 
 export interface ScopeResult {
   service_lines: string[];
@@ -62,5 +63,31 @@ export class JudgmentService {
     const system = `${loadSkill('deal-followup')}\n\n${JSON_RULE}\n` +
       'Output keys: draft_subject (string), draft_body_html (string).';
     return this.judge.askJson<FollowupResult>(system, JSON.stringify(input));
+  }
+
+  async buildProposalContent(input: {
+    company: string;
+    contactName: string;
+    serviceLines: string[];
+    scope: Record<string, unknown>;
+    assumptions: string[];
+  }): Promise<ProposalContent> {
+    const system =
+      `${loadSkill('proposal-assembly')}\n\n${JSON_RULE}\n` +
+      'PRICING DISCIPLINE: if the captured scope cannot justify a firm price, set ' +
+      'commercials.mode="placeholder" and say pricing will be confirmed. Never fabricate a figure.\n' +
+      'Output keys: titleLine (string), understanding (string[]), scopeRows ({line,detail}[]), ' +
+      'assumptions (string[]), approach (string[]), deliverables (string[]), timeline (string), ' +
+      'whyNi (string[]), commercials ({mode:"fixed"|"range"|"placeholder", text:string}), nextSteps (string[]).';
+    const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines'>>(
+      system,
+      JSON.stringify(input),
+    );
+    return {
+      company: input.company,
+      contactName: input.contactName,
+      serviceLines: input.serviceLines,
+      ...raw,
+    };
   }
 }
