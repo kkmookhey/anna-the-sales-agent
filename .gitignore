@@ -1,0 +1,15 @@
+# deps & build
+node_modules/
+dist/
+cdk.out/
+ni-sales-agent/aws/skills/
+ni-sales-agent/aws/src/assets/ni-logo.png
+
+# large/binary brand assets (referenced at build time, not tracked)
+assets/*.pptx
+
+# session memory & os cruft
+.remember/
+*.DS_Store
+.DS_Store
+*.zip
