@@ -7,6 +7,12 @@ ni-sales-agent/aws/skills/
 # large/binary brand assets (referenced at build time, not tracked)
 assets/*.pptx
 
+# secrets — NEVER commit
+.env
+.env.*
+*.env
+!.env.example
+
 # session memory & os cruft
 .remember/
 *.DS_Store
