@@ -63,4 +63,19 @@ describe('GraphClient', () => {
     const g = new GraphClient(creds, 'sales@networkintelligence.ai');
     await expect(g.listInbound('2026-06-02T00:00:00Z')).rejects.toThrow(/403/);
   });
+
+  it('addAttachment posts a base64 fileAttachment to the draft', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: {} },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    await g.addAttachment('draft-1', 'proposal.pptx', Buffer.from('PK'));
+    const [url, init] = fetchMock.mock.calls[1]!;
+    expect(url).toContain('/messages/draft-1/attachments');
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body['@odata.type']).toBe('#microsoft.graph.fileAttachment');
+    expect(body.name).toBe('proposal.pptx');
+    expect(typeof body.contentBytes).toBe('string');
+  });
 });

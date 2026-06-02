@@ -114,6 +114,17 @@ export class GraphClient {
     const json = (await res.json()) as { value: GraphMessage[] };
     return json.value.length ? toInbound(json.value[0]!) : null;
   }
+
+  async addAttachment(messageId: string, name: string, content: Buffer): Promise<void> {
+    await this.call(`/users/${this.box()}/messages/${encodeURIComponent(messageId)}/attachments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        '@odata.type': '#microsoft.graph.fileAttachment',
+        name,
+        contentBytes: content.toString('base64'),
+      }),
+    });
+  }
 }
 
 interface GraphMessage {
