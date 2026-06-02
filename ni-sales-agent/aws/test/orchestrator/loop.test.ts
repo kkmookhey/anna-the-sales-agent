@@ -24,18 +24,23 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
       createDraftReply: vi.fn().mockResolvedValue('draft-1'),
       wasReplySent: vi.fn().mockResolvedValue(false),
       latestInboundInConversation: vi.fn().mockResolvedValue(null),
+      addAttachment: vi.fn().mockResolvedValue(undefined),
     },
     slack: { postStaging: vi.fn().mockResolvedValue('111.222'), detectApproval: vi.fn().mockResolvedValue(false) },
     hubspot: { createDeal: vi.fn().mockResolvedValue('99001') },
     judge: {
       scopeEnquiry: vi.fn().mockResolvedValue({ service_lines: ['pentest_mobile'], draft_subject: 'Re: VAPT Enquiry', draft_body_html: '<p>Hi</p>' }),
-      assessSufficiency: vi.fn(), draftFollowup: vi.fn(),
+      assessSufficiency: vi.fn().mockResolvedValue({ sufficient: true, missing: [], assumptions: ['~95 screens'] }),
+      buildProposalContent: vi.fn().mockResolvedValue({ company: 'Novelty Wealth', contactName: 'Shashank', serviceLines: ['pentest_mobile'], titleLine: 'Mobile VAPT Proposal for Novelty Wealth', understanding: ['x'], scopeRows: [{ line: 'Mobile', detail: 'A+i' }], assumptions: ['~95 screens'], approach: ['OWASP MASVS'], deliverables: ['report'], timeline: '4w', whyNi: ['CERT-In'], commercials: { mode: 'placeholder', text: 'TBC' }, nextSteps: ['NDA'] }),
+      draftFollowup: vi.fn(),
     },
     repo: {
       listDeals: vi.fn(async () => Object.values(stored)),
       getDeal: vi.fn(async (id: string) => stored[id] ?? null),
       putDeal: vi.fn(async (d: Deal) => { stored[d.deal_id] = d; }),
     },
+    s3: { put: vi.fn().mockResolvedValue('s3://ni-decks/proposals/novelty-wealth-v1.pptx') },
+    deck: { render: vi.fn().mockResolvedValue(Buffer.from('PK deck')) },
     ...overrides,
   } as LoopDeps;
 }
@@ -79,5 +84,40 @@ describe('runLoop — NEW enquiry slice', () => {
     await runLoop(deps);
     expect(deps.slack.postStaging).toHaveBeenCalledOnce();
     expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
+  });
+});
+
+describe('runLoop — SCOPE_REVIEW proposal slice', () => {
+  it('SCOPE_REVIEW + sufficient scope builds a deck, stores it, attaches it, and stages the proposal', async () => {
+    const deps = baseDeps({});
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        deal_id: 'conv-1', stage: 'SCOPE_REVIEW', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'm1', last_inbound_at: '2026-06-02T10:00:00Z', next_followup_date: null, followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, actions: [], flags: [],
+      },
+    ]);
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm2', conversationId: 'conv-1', subject: 'Re: VAPT', fromName: 'Shashank',
+      fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-02T12:00:00Z',
+      bodyPreview: 'Answers: 3 roles, staging env, first VAPT', hasAttachments: false,
+    });
+
+    await runLoop(deps);
+
+    expect(deps.judge.buildProposalContent).toHaveBeenCalledOnce();
+    expect(deps.deck.render).toHaveBeenCalledOnce();
+    expect(deps.s3.put).toHaveBeenCalledOnce();
+    expect(deps.graph.createDraftReply).toHaveBeenCalledOnce();
+    expect(deps.graph.addAttachment).toHaveBeenCalledOnce();
+
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+    expect(stored.stage).toBe('PROPOSAL_PENDING_APPROVAL');
+    expect(stored.proposal.deck_path).toBe('s3://ni-decks/proposals/novelty-wealth-v1.pptx');
+    expect(stored.proposal.version).toBe(1);
   });
 });

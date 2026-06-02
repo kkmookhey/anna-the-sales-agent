@@ -4,12 +4,14 @@ import { emptyScope } from '../state/types.js';
 import { decideTransition, resolveScopeReview } from './transitions.js';
 import { scanForInjection, verifiedRecipient } from '../gates/gates.js';
 import { logger } from '../logging.js';
+import type { ProposalContent } from '../proposal/types.js';
 
 export interface GraphPort {
   listInbound(sinceIso: string): Promise<InboundMessage[]>;
   createDraftReply(messageId: string, bodyHtml: string): Promise<string>;
   wasReplySent(conversationId: string, afterIso: string): Promise<boolean>;
   latestInboundInConversation(conversationId: string, afterIso: string): Promise<InboundMessage | null>;
+  addAttachment(messageId: string, name: string, content: Buffer): Promise<void>;
 }
 export interface InboundMessage {
   id: string; conversationId: string; subject: string; fromName: string; fromAddress: string;
@@ -26,11 +28,18 @@ export interface JudgePort {
   scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string }>;
   assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string }>;
   draftFollowup(i: { company: string; contactName: string; followupNumber: number; scopeSummary: Record<string, unknown> }): Promise<{ draft_subject: string; draft_body_html: string }>;
+  buildProposalContent(i: { company: string; contactName: string; serviceLines: string[]; scope: Record<string, unknown>; assumptions: string[] }): Promise<ProposalContent>;
 }
 export interface RepoPort {
   listDeals(): Promise<Deal[]>;
   getDeal(id: string): Promise<Deal | null>;
   putDeal(d: Deal): Promise<void>;
+}
+export interface S3Port {
+  put(key: string, body: Buffer): Promise<string>;
+}
+export interface DeckPort {
+  render(content: ProposalContent): Promise<Buffer>;
 }
 
 export interface LoopDeps {
@@ -42,6 +51,8 @@ export interface LoopDeps {
   hubspot: HubSpotPort;
   judge: JudgePort;
   repo: RepoPort;
+  s3: S3Port;
+  deck: DeckPort;
 }
 
 export interface RunSummary {
@@ -158,8 +169,7 @@ async function advanceDeal(deal: Deal, deps: LoopDeps, nowIso: string): Promise<
           return stageDraft(deal, branch.nextStage, verdict.clarifying_subject ?? `Re: ${latest.subject}`, verdict.clarifying_body_html ?? '', 'clarify_staged', deps, nowIso, latest);
         }
         if (branch.kind === 'STAGE_PROPOSAL') {
-          deal.assumptions = verdict.assumptions;
-          return stageDraft(deal, branch.nextStage, `Proposal — ${deal.company}`, '<p>Proposal cover note.</p>', 'proposal_staged', deps, nowIso, latest);
+          return stageProposal(deal, deps, nowIso, latest, verdict);
         }
       }
       return null;
@@ -242,6 +252,69 @@ async function stageDraft(
     `Approve by: sending the draft${nextStage === 'PO_PENDING_APPROVAL' ? '  |  replying SHIP-IT for HubSpot writes' : ''}\n` +
     `Flags: ${deal.flags.length ? deal.flags.map((f) => f.reason).join(', ') : 'none'}\n\n` +
     `> *Subject:* ${subject}\n> ${bodyHtml.replace(/<[^>]+>/g, '').slice(0, 1500)}`;
+
+  return { text, staged: true, advanced: false };
+}
+
+async function stageProposal(
+  deal: Deal,
+  deps: LoopDeps,
+  nowIso: string,
+  latest: InboundMessage | null,
+  verdict: { assumptions: string[] },
+): Promise<AdvanceResult> {
+  const { config, graph, repo, judge, deck, s3 } = deps;
+
+  deal.assumptions = verdict.assumptions;
+  const content = await judge.buildProposalContent({
+    company: deal.company,
+    contactName: deal.contact_name,
+    serviceLines: deal.service_lines,
+    scope: deal.scope as unknown as Record<string, unknown>,
+    assumptions: deal.assumptions,
+  });
+
+  const version = (deal.proposal?.version ?? 0) + 1;
+  const buf = await deck.render(content);
+  const slug = deal.company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const fileName = `${slug}-proposal-v${version}.pptx`;
+  const deckUri = await s3.put(`proposals/${fileName}`, buf);
+  deal.proposal = { deck_path: deckUri, version, staged_at: nowIso };
+
+  const firstName = deal.contact_name.split(' ')[0] ?? deal.contact_name;
+  const coverHtml =
+    `<p>Hi ${firstName},</p>` +
+    `<p>Please find attached our proposal for ${deal.service_lines.join(', ')}. ` +
+    `It lists the assumptions we made so you can correct anything that's off. ` +
+    `Happy to walk through it on a short call.</p>` +
+    `<p>Best regards,<br/>Network Intelligence — Sales</p>`;
+
+  let draftRef = `(dry-run — no draft; deck stored at ${deckUri})`;
+  if (!config.dryRun) {
+    const draftId = await graph.createDraftReply(latest?.id ?? deal.last_inbound_id, coverHtml);
+    await graph.addAttachment(draftId, fileName, buf);
+    draftRef = `Outlook draft ${draftId} (deck attached)`;
+  }
+
+  const from = deal.stage;
+  deal.stage = 'PROPOSAL_PENDING_APPROVAL';
+  deal.actions.push({
+    ts: nowIso, type: 'proposal_staged', stage_from: from, stage_to: 'PROPOSAL_PENDING_APPROVAL',
+    note: `deck v${version} -> ${deckUri}`,
+  });
+  await repo.putDeal(deal);
+
+  const priceFlag =
+    content.commercials.mode === 'placeholder'
+      ? '\n:warning: Commercials are a PLACEHOLDER — a human must set pricing before sending.'
+      : '';
+  const text =
+    `*[STAGING — proposal]* ${deal.company} / ${deal.contact_name}\n` +
+    `Deal: \`${deal.deal_id}\`  Stage: ${from} → PROPOSAL_PENDING_APPROVAL\n` +
+    `Deck: ${deckUri} (v${version})\n` +
+    `Outlook draft: ${draftRef}\n` +
+    `Approve by: sending the draft${priceFlag}\n` +
+    `Assumptions: ${deal.assumptions.join('; ') || 'none'}`;
 
   return { text, staged: true, advanced: false };
 }
