@@ -1,12 +1,14 @@
 import type { BedrockJudge } from './bedrock.js';
 import { loadSkill } from './skills.js';
 import type { ProposalContent } from '../proposal/types.js';
+import type { Scope } from '../state/types.js';
 
 export interface ScopeResult {
   service_lines: string[];
   draft_subject: string;
   draft_body_html: string;
   company: string; // best-effort prospect company from the signature/body; '' if unknown
+  scope: Partial<Scope>; // scope dimensions extractable from the enquiry; null where unknown
 }
 
 export interface SufficiencyResult {
@@ -15,6 +17,7 @@ export interface SufficiencyResult {
   assumptions: string[];
   clarifying_subject?: string;
   clarifying_body_html?: string;
+  scope?: Partial<Scope>; // scope updated by merging this reply's new facts
 }
 
 export interface FollowupResult {
@@ -36,7 +39,10 @@ export class JudgmentService {
   }): Promise<ScopeResult> {
     const system = `${loadSkill('enquiry-scoping')}\n\n${JSON_RULE}\n` +
       'Output keys: service_lines (string[]), draft_subject (string), draft_body_html (string), ' +
-      "company (string — the prospect's company name from their signature/body; empty string if not stated). " +
+      "company (string — the prospect's company name from their signature/body; empty string if not stated), " +
+      'scope (object with keys asset_count, environment, compliance_driver, timeline, prior_testing, ' +
+      'access_model, authority_signal, region — each a string, or null where not stated). ' +
+      'Extract every scope detail the enquiry already states into `scope`. ' +
       'Do not infer the company from a free-email domain like gmail.com.';
     return this.judge.askJson<ScopeResult>(
       system,
@@ -50,7 +56,12 @@ export class JudgmentService {
   }): Promise<SufficiencyResult> {
     const system = `${loadSkill('scope-sufficiency')}\n\n${JSON_RULE}\n` +
       'Output keys: sufficient (boolean), missing (string[]), assumptions (string[]), ' +
-      'clarifying_subject (string, only if not sufficient), clarifying_body_html (string, only if not sufficient).';
+      'clarifying_subject (string, only if not sufficient), clarifying_body_html (string, only if not sufficient), ' +
+      'scope (object — the merged scope reflecting both the prior scope and this reply). ' +
+      'Decide sufficient=true when, for each in-scope line, what/how-much/environment-or-access/deadline are ' +
+      'answerable from the captured scope plus this reply — OR when the prospect explicitly asks you to send ' +
+      'the proposal and the core scope is answerable. Bias toward sufficient; only set false for a genuinely ' +
+      'blocking, unassumable detail.';
     return this.judge.askJson<SufficiencyResult>(
       system,
       JSON.stringify({ scope_so_far: input.scopeSoFar, latest_reply: input.reply }),

@@ -20,6 +20,16 @@ describe('JudgmentService', () => {
         draft_subject: 'Re: VAPT Enquiry',
         draft_body_html: '<p>Hi Shashank,</p>',
         company: 'Novelty Wealth',
+        scope: {
+          environment: 'Android + iOS',
+          timeline: '30 days',
+          asset_count: '~95 screens',
+          compliance_driver: 'CERT-In',
+          access_model: null,
+          prior_testing: null,
+          authority_signal: null,
+          region: null,
+        },
       }),
     );
     const out = await svc.scopeEnquiry(inbound);
@@ -27,15 +37,18 @@ describe('JudgmentService', () => {
     expect(out.draft_subject).toMatch(/VAPT/);
     expect(out.draft_body_html).toContain('Shashank');
     expect(out.company).toBe('Novelty Wealth');
+    expect(out.scope.environment).toBe('Android + iOS');
   });
 
   it('assessSufficiency returns a verdict with missing fields', async () => {
     const svc = new JudgmentService(
-      judgeReturning({ sufficient: false, missing: ['user roles'], assumptions: [], clarifying_subject: 'Re: VAPT', clarifying_body_html: '<p>One more thing</p>' }),
+      judgeReturning({ sufficient: false, missing: ['user roles'], assumptions: [], clarifying_subject: 'Re: VAPT', clarifying_body_html: '<p>One more thing</p>', scope: { asset_count: '10 API endpoints' } }),
     );
     const out = await svc.assessSufficiency({ scopeSoFar: {}, reply: 'we use AWS' });
     expect(out.sufficient).toBe(false);
     expect(out.missing).toContain('user roles');
+    expect(out.scope).toBeDefined();
+    expect(out.scope?.asset_count).toBe('10 API endpoints');
   });
 
   it('classifyProposalReply returns the model\'s classification kind', async () => {

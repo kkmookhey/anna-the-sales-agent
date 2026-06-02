@@ -31,8 +31,8 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
     slack: { postStaging: vi.fn().mockResolvedValue('111.222'), detectApproval: vi.fn().mockResolvedValue(false), upsertCanvas: vi.fn().mockResolvedValue('F123') },
     hubspot: { createDeal: vi.fn().mockResolvedValue('99001') },
     judge: {
-      scopeEnquiry: vi.fn().mockResolvedValue({ service_lines: ['pentest_mobile'], draft_subject: 'Re: VAPT Enquiry', draft_body_html: '<p>Hi</p>', company: 'Novelty Wealth' }),
-      assessSufficiency: vi.fn().mockResolvedValue({ sufficient: true, missing: [], assumptions: ['~95 screens'] }),
+      scopeEnquiry: vi.fn().mockResolvedValue({ service_lines: ['pentest_mobile'], draft_subject: 'Re: VAPT Enquiry', draft_body_html: '<p>Hi</p>', company: 'Novelty Wealth', scope: { environment: 'Android + iOS', timeline: '30 days', asset_count: '~95 screens', compliance_driver: 'CERT-In', access_model: null, prior_testing: null, authority_signal: null, region: null } }),
+      assessSufficiency: vi.fn().mockResolvedValue({ sufficient: true, missing: [], assumptions: ['~95 screens'], scope: { asset_count: '10 endpoints', access_model: 'credentialed' } }),
       buildProposalContent: vi.fn().mockResolvedValue({ company: 'Novelty Wealth', contactName: 'Shashank', serviceLines: ['pentest_mobile'], titleLine: 'Mobile VAPT Proposal for Novelty Wealth', understanding: ['x'], scopeRows: [{ line: 'Mobile', detail: 'A+i' }], assumptions: ['~95 screens'], approach: ['OWASP MASVS'], deliverables: ['report'], timeline: '4w', whyNi: ['CERT-In'], commercials: { mode: 'placeholder', text: 'TBC' }, nextSteps: ['NDA'] }),
       draftFollowup: vi.fn().mockResolvedValue({ draft_subject: 'Re: Proposal', draft_body_html: '<p>More info</p>' }),
       classifyProposalReply: vi.fn().mockResolvedValue({ kind: 'none' }),
@@ -68,6 +68,7 @@ describe('runLoop — NEW enquiry slice', () => {
     expect(stored.contact_email).toBe('kkmookhey@gmail.com');
     expect(stored.deal_id).toBe('conv-1');
     expect(stored.company).toBe('Novelty Wealth'); // from the signature, not the gmail domain
+    expect(stored.scope.timeline).toBe('30 days'); // scope accumulated from the enquiry
     expect(summary.staged).toBe(1);
   });
 
@@ -137,6 +138,7 @@ describe('runLoop — SCOPE_REVIEW proposal slice', () => {
     expect(stored.stage).toBe('PROPOSAL_PENDING_APPROVAL');
     expect(stored.proposal.deck_path).toBe('s3://ni-decks/proposals/novelty-wealth-v1.pptx');
     expect(stored.proposal.version).toBe(1);
+    expect(stored.scope.access_model).toBe('credentialed'); // merged from the sufficiency verdict
     expect(stored.last_inbound_at).toBe('2026-06-02T12:00:00Z'); // consumed the reply it ran sufficiency on
   });
 });

@@ -1,5 +1,5 @@
 import type { Config } from '../config.js';
-import type { Deal, Stage } from '../state/types.js';
+import type { Deal, Scope, Stage } from '../state/types.js';
 import { emptyScope } from '../state/types.js';
 import { decideTransition, resolveScopeReview, resolveProposalReply } from './transitions.js';
 import { scanForInjection, verifiedRecipient } from '../gates/gates.js';
@@ -27,8 +27,8 @@ export interface HubSpotPort {
   createDeal(props: { dealname: string; pipeline: string; dealstage: string; hubspot_owner_id: string; amount?: string }): Promise<string>;
 }
 export interface JudgePort {
-  scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string; company: string }>;
-  assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string }>;
+  scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string; company: string; scope: Partial<Scope> }>;
+  assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string; scope?: Partial<Scope> }>;
   draftFollowup(i: { company: string; contactName: string; followupNumber: number; scopeSummary: Record<string, unknown> }): Promise<{ draft_subject: string; draft_body_html: string }>;
   classifyProposalReply(i: { subject: string; reply: string }): Promise<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }>;
   buildProposalContent(i: { company: string; contactName: string; serviceLines: string[]; scope: Record<string, unknown>; assumptions: string[] }): Promise<ProposalContent>;
@@ -182,6 +182,7 @@ async function advanceDeal(
       if (deal.stage === 'SCOPE_REVIEW' && latest) {
         const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: htmlToText(latest.bodyFull) });
         const branch = resolveScopeReview(verdict.sufficient);
+        if (verdict.scope) deal.scope = { ...deal.scope, ...verdict.scope };
         // consume the reply we just ran sufficiency on (persisted by stageDraft/stageProposal)
         deal.last_inbound_id = latest.id;
         deal.last_inbound_at = latest.receivedDateTime;
@@ -240,7 +241,7 @@ async function advanceDeal(
         bodyPreview: originating?.body ?? '',
       });
       deal.service_lines = scoped.service_lines;
-      deal.scope.service_lines = scoped.service_lines;
+      deal.scope = { ...deal.scope, ...scoped.scope, service_lines: scoped.service_lines };
       if (scoped.company?.trim()) deal.company = scoped.company.trim(); // prefer the real company over the email-domain guess
       return stageDraft(deal, t.nextStage, scoped.draft_subject, scoped.draft_body_html, 'scoping_staged', deps, nowIso, null);
     }
