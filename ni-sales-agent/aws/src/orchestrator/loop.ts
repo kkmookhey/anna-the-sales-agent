@@ -4,6 +4,7 @@ import { emptyScope } from '../state/types.js';
 import { decideTransition, resolveScopeReview } from './transitions.js';
 import { scanForInjection, verifiedRecipient } from '../gates/gates.js';
 import { logger } from '../logging.js';
+import { renderPipelineBoard } from '../canvas/board.js';
 import type { ProposalContent } from '../proposal/types.js';
 
 export interface GraphPort {
@@ -20,6 +21,7 @@ export interface InboundMessage {
 export interface SlackPort {
   postStaging(channelId: string, text: string, threadTs?: string): Promise<string>;
   detectApproval(channelId: string, threadTs: string, token: string, approvedUserIds: string[]): Promise<boolean>;
+  upsertCanvas(canvasId: string | null, title: string, markdown: string): Promise<string>;
 }
 export interface HubSpotPort {
   createDeal(props: { dealname: string; pipeline: string; dealstage: string; hubspot_owner_id: string; amount?: string }): Promise<string>;
@@ -34,6 +36,8 @@ export interface RepoPort {
   listDeals(): Promise<Deal[]>;
   getDeal(id: string): Promise<Deal | null>;
   putDeal(d: Deal): Promise<void>;
+  getMeta(key: string): Promise<string | null>;
+  putMeta(key: string, value: string): Promise<void>;
 }
 export interface S3Port {
   put(key: string, body: Buffer): Promise<string>;
@@ -130,6 +134,11 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       if (line.advanced) summary.advanced++;
     }
   }
+
+  const board = renderPipelineBoard([...byConversation.values()], nowIso);
+  const existingCanvasId = await repo.getMeta('canvas_id');
+  const canvasId = await slack.upsertCanvas(existingCanvasId, 'NI Sales — Pipeline', board);
+  if (!existingCanvasId) await repo.putMeta('canvas_id', canvasId);
 
   const header = `:robot_face: *NI Sales Agent — run summary*${config.dryRun ? ' (dry-run)' : ''}\n` +
     `_${summary.processed} inbound · ${summary.staged} staged · ${summary.advanced} advanced · ` +

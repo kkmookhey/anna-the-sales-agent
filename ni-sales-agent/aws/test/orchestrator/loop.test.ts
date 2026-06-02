@@ -26,7 +26,7 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
       latestInboundInConversation: vi.fn().mockResolvedValue(null),
       addAttachment: vi.fn().mockResolvedValue(undefined),
     },
-    slack: { postStaging: vi.fn().mockResolvedValue('111.222'), detectApproval: vi.fn().mockResolvedValue(false) },
+    slack: { postStaging: vi.fn().mockResolvedValue('111.222'), detectApproval: vi.fn().mockResolvedValue(false), upsertCanvas: vi.fn().mockResolvedValue('F123') },
     hubspot: { createDeal: vi.fn().mockResolvedValue('99001') },
     judge: {
       scopeEnquiry: vi.fn().mockResolvedValue({ service_lines: ['pentest_mobile'], draft_subject: 'Re: VAPT Enquiry', draft_body_html: '<p>Hi</p>' }),
@@ -38,6 +38,8 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
       listDeals: vi.fn(async () => Object.values(stored)),
       getDeal: vi.fn(async (id: string) => stored[id] ?? null),
       putDeal: vi.fn(async (d: Deal) => { stored[d.deal_id] = d; }),
+      getMeta: vi.fn(async () => null),
+      putMeta: vi.fn(async () => {}),
     },
     s3: { put: vi.fn().mockResolvedValue('s3://ni-decks/proposals/novelty-wealth-v1.pptx') },
     deck: { render: vi.fn().mockResolvedValue(Buffer.from('PK deck')) },
@@ -76,6 +78,13 @@ describe('runLoop — NEW enquiry slice', () => {
     expect(deps.judge.scopeEnquiry).not.toHaveBeenCalled();
     expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
     expect(summary.disqualified).toBe(1);
+  });
+
+  it('updates the pipeline canvas every run and persists the canvas id on first creation', async () => {
+    const deps = baseDeps({});
+    await runLoop(deps);
+    expect(deps.slack.upsertCanvas).toHaveBeenCalledOnce();
+    expect(deps.repo.putMeta).toHaveBeenCalledWith('canvas_id', 'F123');
   });
 
   it('respects dry_run: posts staging but never creates an Outlook draft', async () => {
