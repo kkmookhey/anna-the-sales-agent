@@ -40,7 +40,10 @@ export class NiSalesAgentStack extends Stack {
       runtime: lambda.Runtime.NODEJS_20_X,
       timeout: Duration.minutes(5),
       memorySize: 512,
-      reservedConcurrentExecutions: 1,
+      // NOTE: reservedConcurrentExecutions omitted — new accounts have a Lambda
+      // concurrency limit of 10 and won't allow reserving below that. The 20-min
+      // cron + idempotent stage guards make overlapping ticks a non-issue. Request a
+      // concurrency quota increase and re-add `reservedConcurrentExecutions: 1` later if desired.
       bundling: { format: nodejs.OutputFormat.ESM, commandHooks: {
         beforeBundling: () => [],
         beforeInstall: () => [],
