@@ -16,6 +16,8 @@ const BODY = 'Calibri';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const LOGO_CANDIDATES = [
+  join(here, 'assets', 'ni-logo.png'), // Lambda bundle: /var/task/assets/ni-logo.png
+  ...(process.env.LAMBDA_TASK_ROOT ? [join(process.env.LAMBDA_TASK_ROOT, 'assets', 'ni-logo.png')] : []),
   join(here, '..', 'assets', 'ni-logo.png'),
   join(here, '..', '..', 'src', 'assets', 'ni-logo.png'),
 ];

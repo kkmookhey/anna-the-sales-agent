@@ -48,8 +48,9 @@ export class NiSalesAgentStack extends Stack {
         beforeBundling: () => [],
         beforeInstall: () => [],
         afterBundling: (i: string, o: string) => [
+          // i = aws/ (project root). Skills live at ni-sales-agent/skills; logo at src/assets.
           `cp -R ${i}/../skills ${o}/skills`,
-          `mkdir -p ${o}/assets && cp -R ${i}/assets/. ${o}/assets/ 2>/dev/null || true`,
+          `mkdir -p ${o}/assets && cp -R ${i}/src/assets/. ${o}/assets/ 2>/dev/null || true`,
         ],
       } },
       environment: {

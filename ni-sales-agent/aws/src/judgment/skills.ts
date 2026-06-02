@@ -4,8 +4,13 @@ import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-// In tests/local: ../../../skills (prototype dir). In Lambda bundle: ../../skills (copied by build).
+// Candidate roots, most-specific first:
+// - Lambda bundle: esbuild flattens everything to /var/task/index.mjs, and the build copies
+//   skills to /var/task/skills, so `join(here, 'skills')` (and LAMBDA_TASK_ROOT/skills) is correct.
+// - Tests/local: source lives at src/judgment/, so ../../../skills resolves to the prototype dir.
 const CANDIDATE_ROOTS = [
+  join(here, 'skills'),
+  ...(process.env.LAMBDA_TASK_ROOT ? [join(process.env.LAMBDA_TASK_ROOT, 'skills')] : []),
   join(here, '..', '..', '..', 'skills'),
   join(here, '..', '..', 'skills'),
 ];
