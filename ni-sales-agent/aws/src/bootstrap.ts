@@ -7,7 +7,7 @@ import { HubSpotClient } from './adapters/hubspot.js';
 import { DeckStore } from './adapters/s3.js';
 import { BedrockJudge } from './judgment/bedrock.js';
 import { JudgmentService } from './judgment/judgment.js';
-import { renderDeck } from './proposal/deck.js';
+import { RenderClient } from './adapters/render.js';
 import type { LoopDeps } from './orchestrator/loop.js';
 
 async function secret(client: SecretsManagerClient, id: string): Promise<Record<string, string>> {
@@ -54,6 +54,6 @@ export async function buildDeps(env: Record<string, string | undefined> = proces
     },
     repo,
     s3,
-    deck: { render: (content) => renderDeck(content) },
+    deck: RenderClient.fromEnv(env['RENDER_FUNCTION_NAME']!, config.region),
   };
 }
