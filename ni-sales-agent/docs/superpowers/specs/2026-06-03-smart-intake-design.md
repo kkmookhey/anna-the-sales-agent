@@ -57,10 +57,13 @@ reclassify or force a response (see §12 — the Slack "review" bucket is *infor
 
 ```
 inbound message (not already a known conversation)
-  → heuristic prefilter (code, cheap, deterministic):
-        drop obvious automated mail — no-reply@/noreply@/donotreply@ senders,
-        Auto-Submitted header, List-Id/List-Unsubscribe (bulk), mailer-daemon.
+  → heuristic prefilter (code, cheap, deterministic) — SENDER-ADDRESS patterns:
+        drop obvious automated mail whose local-part/sender matches no-reply / noreply /
+        donotreply / do-not-reply / mailer-daemon / postmaster / notifications@.
         Dropped → disqualified summary line, no LLM call.
+        (Header-based bulk detection — Auto-Submitted / List-Id / List-Unsubscribe — is a future
+        tightening; those headers aren't fetched today. The LLM classifier catches header-less bulk
+        mail and OOO that slip past the address prefilter.)
   → judge.classifyInbound({ fromName, fromAddress, subject, body })   [NEW Bedrock call]
         → { category: 'enquiry' | 'forwarded_enquiry' | 'not_enquiry',
             original_sender?: { name, email },   // present for forwarded_enquiry when extractable
@@ -185,7 +188,8 @@ true` when absent (back-compat — they were all direct).
 
 ## 10. Testing
 
-- Prefilter: no-reply@ / Auto-Submitted / List-Id senders are dropped without an LLM call.
+- Prefilter: `no-reply@` / `mailer-daemon@` / `postmaster@` senders are dropped without an LLM call;
+  a normal human sender is NOT dropped by the prefilter.
 - `classifyInbound`: prompt includes the full body; returns the new shape; mock Bedrock.
 - Branching: `not_enquiry` → disqualified (no deal); `low` confidence → review line (no deal);
   `enquiry` → deal with verified recipient; `forwarded_enquiry` → deal with `source:'forwarded'`,
