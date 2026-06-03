@@ -14,7 +14,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "cdk": "cdk",
     "local": "tsx src/local.ts",
-    "gen:render-assets": "tsx scripts/gen-render-assets.ts"
+    "gen:render-assets": "tsx scripts/gen-render-assets.ts",
+    "render:sample": "tsx src/render/sample.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.658.0",
