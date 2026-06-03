@@ -27,7 +27,7 @@ h1,h2,.eyebrow{font-family:'Jost',sans-serif;}
 h1{font-size:54px;font-weight:600;line-height:1.05;max-width:900px;}
 h2{font-size:34px;font-weight:600;margin-bottom:28px;}
 .accent{height:6px;width:280px;background:linear-gradient(90deg,#582A90,#731E7A,#A01855,#B61A3F);margin:24px 0;}
-.logo{height:40px;}
+.logo{height:40px;width:auto;align-self:flex-start;}
 .cover{display:flex;flex-direction:column;justify-content:center;}
 .cover .meta{font-family:'Jost',sans-serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#9A9AA2;margin-top:28px;}
 ul{list-style:none;display:flex;flex-direction:column;gap:16px;margin-top:8px;}
