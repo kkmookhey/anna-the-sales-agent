@@ -79,6 +79,43 @@ export class JudgmentService {
     return this.judge.askJson<FollowupResult>(system, JSON.stringify(input));
   }
 
+  async classifyInbound(input: {
+    fromName: string;
+    fromAddress: string;
+    subject: string;
+    body: string;
+  }): Promise<{
+    category: 'enquiry' | 'forwarded_enquiry' | 'not_enquiry';
+    original_sender?: { name: string; email: string };
+    confidence: 'high' | 'low';
+    reason: string;
+  }> {
+    const system =
+      'You triage a single email sent to a cybersecurity firm\'s sales inbox. ' +
+      'Decide if it is a genuine SALES ENQUIRY for security services (pentest/VAPT, MDR/SOC, GRC, ' +
+      'cloud security, compliance, identity, AI security). ' +
+      `${JSON_RULE}\n` +
+      'Categories: "enquiry" = a direct genuine prospect enquiry; ' +
+      '"forwarded_enquiry" = the body contains a FORWARDED message whose original content is a ' +
+      'genuine prospect enquiry (sales/marketing forwarded it in) — extract the ORIGINAL sender ' +
+      'name + email from the forwarded header block; ' +
+      '"not_enquiry" = automated/notification mail, delivery receipts, out-of-office, newsletters, ' +
+      'vendors marketing TO us, internal operational chatter, or spam. ' +
+      'Set confidence "low" when genuinely unsure. ' +
+      'Output keys: category ("enquiry"|"forwarded_enquiry"|"not_enquiry"), ' +
+      'original_sender (object {name, email}; OMIT unless category is forwarded_enquiry AND you can ' +
+      'extract a plausible email), confidence ("high"|"low"), reason (string).';
+    return this.judge.askJson<{
+      category: 'enquiry' | 'forwarded_enquiry' | 'not_enquiry';
+      original_sender?: { name: string; email: string };
+      confidence: 'high' | 'low';
+      reason: string;
+    }>(
+      system,
+      JSON.stringify({ from_name: input.fromName, from_address: input.fromAddress, subject: input.subject, body: input.body }),
+    );
+  }
+
   async classifyProposalReply(input: { subject: string; reply: string }): Promise<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }> {
     const system =
       `You classify a prospect's email reply to a sales proposal we sent. ${JSON_RULE}\n` +
