@@ -125,6 +125,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       proposal: null,
       actions: [],
       flags: flags.map((reason) => ({ ts: nowIso, message_id: m.id, reason })),
+      intake: { source: 'direct', recipient_verified: true },
     };
     byConversation.set(fresh.deal_id, fresh);
     originatingContext.set(fresh.deal_id, { subject: m.subject, body: htmlToText(m.bodyFull) });

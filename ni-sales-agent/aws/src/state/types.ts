@@ -82,4 +82,10 @@ export interface Deal {
   proposal: Proposal | null;
   actions: DealAction[];
   flags: DealFlag[];
+  intake: {
+    source: 'direct' | 'forwarded';
+    forwarded_by?: string;
+    proposed_recipient?: string;
+    recipient_verified: boolean;
+  };
 }

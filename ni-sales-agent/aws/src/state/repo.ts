@@ -18,11 +18,16 @@ export class DealRepo {
     return new DealRepo(doc, table);
   }
 
+  private withDefaults(item: Deal): Deal {
+    if (!item.intake) item.intake = { source: 'direct', recipient_verified: true };
+    return item;
+  }
+
   async getDeal(dealId: string): Promise<Deal | null> {
     const res = await this.doc.send(
       new GetCommand({ TableName: this.table, Key: { deal_id: dealId } }),
     );
-    return (res.Item as Deal | undefined) ?? null;
+    return res.Item ? this.withDefaults(res.Item as Deal) : null;
   }
 
   async listDeals(): Promise<Deal[]> {
@@ -33,7 +38,7 @@ export class DealRepo {
         new ScanCommand({ TableName: this.table, ExclusiveStartKey: cursor }),
       );
       for (const item of (res.Items as Deal[] | undefined) ?? []) {
-        if (!item.deal_id.startsWith('_meta#')) deals.push(item);
+        if (!item.deal_id.startsWith('_meta#')) deals.push(this.withDefaults(item));
       }
       cursor = res.LastEvaluatedKey as Record<string, unknown> | undefined;
     } while (cursor);
