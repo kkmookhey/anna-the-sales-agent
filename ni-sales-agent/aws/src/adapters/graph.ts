@@ -96,6 +96,24 @@ export class GraphClient {
     return draft.id;
   }
 
+  /** Create a reply draft, then set its recipient to an explicit (body-derived) external address.
+   *  Used ONLY for forwarded enquiries (see gates.bodyDerivedRecipient). Never auto-sends. */
+  async createDraftToExternal(messageId: string, bodyHtml: string, toAddress: string): Promise<string> {
+    const created = await this.call(
+      `/users/${this.box()}/messages/${encodeURIComponent(messageId)}/createReply`,
+      { method: 'POST' },
+    );
+    const draft = (await created.json()) as { id: string };
+    await this.call(`/users/${this.box()}/messages/${encodeURIComponent(draft.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        body: { contentType: 'HTML', content: bodyHtml },
+        toRecipients: [{ emailAddress: { address: toAddress } }],
+      }),
+    });
+    return draft.id;
+  }
+
   async wasReplySent(conversationId: string, afterIso: string): Promise<boolean> {
     const filter = encodeURIComponent(
       `conversationId eq '${this.odata(conversationId)}' and sentDateTime ge ${afterIso}`,

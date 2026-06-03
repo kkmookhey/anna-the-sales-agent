@@ -10,6 +10,7 @@ import type { ProposalContent } from '../proposal/types.js';
 export interface GraphPort {
   listInbound(sinceIso: string): Promise<InboundMessage[]>;
   createDraftReply(messageId: string, bodyHtml: string): Promise<string>;
+  createDraftToExternal(messageId: string, bodyHtml: string, toAddress: string): Promise<string>;
   wasReplySent(conversationId: string, afterIso: string): Promise<boolean>;
   latestInboundInConversation(conversationId: string, afterIso: string): Promise<InboundMessage | null>;
   addAttachment(messageId: string, name: string, content: Buffer): Promise<void>;
