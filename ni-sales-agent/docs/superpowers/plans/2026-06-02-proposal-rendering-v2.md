@@ -441,19 +441,29 @@ git commit -m "feat: add HTML proposal template (Transilience design system, 16:
 
 - [ ] **Step 1: Implement the PDF wrapper**
 
-Create `aws/src/render/pdf.ts`:
+Create `aws/src/render/pdf.ts`. It is environment-aware: in Lambda it uses the `@sparticuz/chromium`
+Linux binary; locally (macOS/dev) `@sparticuz/chromium`'s binary won't run, so it launches a
+system-installed Chrome (overridable via `PUPPETEER_EXECUTABLE_PATH`).
 
 ```ts
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 
+const MAC_CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+
+async function launchOptions(): Promise<{ args: string[]; executablePath: string; headless: true }> {
+  // In Lambda, AWS sets AWS_LAMBDA_FUNCTION_NAME — use the bundled Linux Chromium.
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return { args: chromium.args, executablePath: await chromium.executablePath(), headless: true };
+  }
+  // Local dev: the @sparticuz binary is Linux-only. Use a system Chrome.
+  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH ?? MAC_CHROME;
+  return { args: [], executablePath, headless: true };
+}
+
 export async function htmlToPdf(html: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: { width: 1280, height: 720 },
-    executablePath: await chromium.executablePath(),
-    headless: true,
-  });
+  const opts = await launchOptions();
+  const browser = await puppeteer.launch({ ...opts, defaultViewport: { width: 1280, height: 720 } });
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
@@ -464,6 +474,9 @@ export async function htmlToPdf(html: string): Promise<Buffer> {
   }
 }
 ```
+
+Note: the local sample (Step 3) needs Chrome installed at the macOS path, or `PUPPETEER_EXECUTABLE_PATH`
+set. The authoritative render verification is the Lambda smoke test in Task 12 Step 3.
 
 - [ ] **Step 2: Implement the local sample script**
 

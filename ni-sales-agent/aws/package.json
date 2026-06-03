@@ -25,7 +25,6 @@
     "@aws-sdk/client-secrets-manager": "^3.658.0",
     "@aws-sdk/lib-dynamodb": "^3.658.0",
     "@sparticuz/chromium": "^131.0.1",
-    "pptxgenjs": "^3.12.0",
     "puppeteer-core": "^23.11.1"
   },
   "devDependencies": {
