@@ -59,12 +59,12 @@ prospect reply
       → buildProposalContent(Bedrock)                            ENRICHED
           + capability-library.md injected as a CACHED grounding block
           → ProposalContent (now incl. credentials[], transilienceEdge[])
-      → invoke ni-sales-render  { content, slug, version }       NEW Lambda
+      → invoke ni-sales-render  { content }                      NEW Lambda (pure fn)
           → fill HTML template (Transilience design system)
           → puppeteer-core + @sparticuz/chromium → PDF (16:9)
-          → S3 put proposals/<slug>-proposal-v<n>.pdf
-          → return { s3Key }
-      → S3 get PDF bytes → Outlook draft attachment             (reused path)
+          → return { pdfBase64 }
+      → S3 put proposals/<slug>-proposal-v<n>.pdf  (orchestrator) (reused path)
+      → Outlook draft attachment (PDF bytes)                     (reused path)
       → Slack staging post → PROPOSAL_PENDING_APPROVAL          (unchanged)
 ```
 
@@ -77,12 +77,15 @@ Headless Chrome lives in a **dedicated `ni-sales-render` Lambda**, not the orche
   (`/tmp`). Deps (unbundled `nodeModules`, like pptxgenjs is today): `puppeteer-core`,
   `@sparticuz/chromium` (full package — bundled binary matches the npm version, eliminating
   version-drift maintenance). Carries the HTML template module, bundled fonts, and the NI logo.
-- **Contract:** synchronous `Invoke` (RequestResponse). Request `{ content: ProposalContent, slug:
-  string, version: number }`. The render Lambda writes the PDF to the existing decks bucket and
-  returns `{ s3Key: string }`. The orchestrator fetches bytes from S3 for the Outlook attachment
-  (S3 is the canonical artifact store, matching today's flow).
-- **IAM:** orchestrator gets `lambda:InvokeFunction` on the render Lambda; render Lambda gets
-  `s3:PutObject` on the decks bucket. Bucket/env wiring via CDK.
+- **Contract:** the render Lambda is a **pure function** — `content → PDF bytes`. Synchronous
+  `Invoke` (RequestResponse); request `{ content: ProposalContent }`; response `{ pdfBase64: string }`.
+  The orchestrator's existing `DeckPort.render(content) => Promise<Buffer>` is preserved: only the
+  implementation swaps from in-process pptxgenjs to a Lambda-invoke client that decodes the base64.
+  The orchestrator keeps its current S3 put + Outlook attach unchanged. The render Lambda needs **no
+  S3 access**. (PDF responses are well under the 6 MB sync-invoke limit; ~11 pages of text + subset
+  fonts is typically <1 MB. If proposals ever grow large, switch to an S3 hand-off — V2.)
+- **IAM:** orchestrator gets `lambda:InvokeFunction` on the render Lambda. No S3 grant on the render
+  Lambda. Env/wiring via CDK (`RENDER_FUNCTION_NAME` on the orchestrator).
 
 **Rationale:** isolates a ~170 MB, occasionally-used, memory-hungry dependency from the frequent
 tick path; independent memory tuning; tick cold-starts unaffected.
@@ -96,9 +99,10 @@ infrequent) proposal path — acceptable.
 - CDK `afterBundling` copies `src/content/` → `<output>/content/` (same mechanism as skills/logo).
 - `judgment.ts` loads it at runtime via the existing candidate-path resolution
   (`join(here,'content','capability-library.md')` / `LAMBDA_TASK_ROOT`).
-- `buildProposalContent` injects the **full** library (~12 KB) as a grounding block in the Bedrock
-  request, marked *"quote, never invent."* Injected via a **prompt-cached** content block (static →
-  cache once, reuse across calls).
+- `buildProposalContent` injects the **full** library (~12 KB) into the Bedrock system prompt,
+  marked *"quote, never invent."*
+- **No prompt caching:** proposals are generated infrequently, so Bedrock's 5-minute cache TTL would
+  essentially never hit — caching would add complexity for ~zero benefit. Skipped.
 - Section-by-serviceLine selection to trim tokens is a deliberate later optimization — full inject
   is the v1 choice for determinism and reliability.
 
@@ -134,10 +138,12 @@ interface ProposalContent {
 - **Design system:** reuse tokens from `Website/colors_and_type.css` / `branding2.md`. Rich Black
   (`#0A0A0B`) surfaces, violet→crimson gradient (`#582A90 → #B61A3F`) earned on hero/accent bars,
   Bumblebee yellow (`#FCE205`) accent only. Geometric radii, hairline borders.
-- **Fonts:** **Jost** (display) + **Roboto** (body) bundled as local `woff2` and referenced via
-  `@font-face` — no network at render time. (If licensed Futura PT is supplied later, swap the
-  `--font-display` source.)
-- **Logo:** `ni-logo.png` embedded as a `data:` URI.
+- **Fonts & logo:** **Jost** (display, 400/600) + **Roboto** (body, 400/500) and the NI logo are
+  inlined as **committed base64 constants** (`src/render/assets.generated.ts`, produced once by a
+  generation script from the `@fontsource` packages + `ni-logo.png`). The template references them as
+  `@font-face`/`data:` URIs. This compiles the assets into the esbuild bundle — no runtime file
+  reads, no bundle path-resolution (the failure mode from the prior session). If licensed Futura PT
+  is supplied later, regenerate with it as `--font-display`.
 - **Section flow** (sparse sections drop cleanly):
   Cover → Understanding your need → Scope (table) → Approach & standards → Deliverables & timeline →
   Credentials → Transilience edge (conditional) → Why NI → Assumptions → Commercials → Next steps.
