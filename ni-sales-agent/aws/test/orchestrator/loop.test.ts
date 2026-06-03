@@ -35,6 +35,7 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
       assessSufficiency: vi.fn().mockResolvedValue({ sufficient: true, missing: [], assumptions: ['~95 screens'], scope: { asset_count: '10 endpoints', access_model: 'credentialed' } }),
       buildProposalContent: vi.fn().mockResolvedValue({ company: 'Novelty Wealth', contactName: 'Shashank', serviceLines: ['pentest_mobile'], titleLine: 'Mobile VAPT Proposal for Novelty Wealth', understanding: ['x'], scopeRows: [{ line: 'Mobile', detail: 'A+i' }], assumptions: ['~95 screens'], approach: ['OWASP MASVS'], deliverables: ['report'], timeline: '4w', whyNi: ['CERT-In'], commercials: { mode: 'placeholder', text: 'TBC' }, nextSteps: ['NDA'] }),
       draftFollowup: vi.fn().mockResolvedValue({ draft_subject: 'Re: Proposal', draft_body_html: '<p>More info</p>' }),
+      classifyInbound: vi.fn().mockResolvedValue({ category: 'enquiry', confidence: 'high', reason: 'genuine enquiry' }),
       classifyProposalReply: vi.fn().mockResolvedValue({ kind: 'none' }),
     },
     repo: {
@@ -72,7 +73,7 @@ describe('runLoop — NEW enquiry slice', () => {
     expect(summary.staged).toBe(1);
   });
 
-  it('disqualifies an internal sender with no enquiry content and takes no action', async () => {
+  it('disqualifies a non-enquiry (classified not_enquiry) and takes no action', async () => {
     const deps = baseDeps({});
     (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
       {
@@ -83,6 +84,7 @@ describe('runLoop — NEW enquiry slice', () => {
         bodyFull: '<p>This is Test ID.</p>', hasAttachments: true,
       },
     ]);
+    (deps.judge.classifyInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ category: 'not_enquiry', confidence: 'high', reason: 'internal operational mail' });
     const summary = await runLoop(deps);
     expect(deps.judge.scopeEnquiry).not.toHaveBeenCalled();
     expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
@@ -102,6 +104,54 @@ describe('runLoop — NEW enquiry slice', () => {
     await runLoop(deps);
     expect(deps.slack.postStaging).toHaveBeenCalledOnce();
     expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
+  });
+});
+
+describe('runLoop — intake classification', () => {
+  const inboundMsg = (over: Record<string, unknown>) => ({
+    id: 'm9', conversationId: 'conv-9', subject: 'Hello', fromName: 'Sam',
+    fromAddress: 'sam@prospect.com', participants: ['sam@prospect.com', 'sales@networkintelligence.ai'],
+    receivedDateTime: '2026-06-02T14:00:00Z', bodyPreview: 'hi', bodyFull: '<p>hi</p>', hasAttachments: false,
+    ...over,
+  });
+
+  it('disqualifies a not_enquiry without creating a deal', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([inboundMsg({})]);
+    (deps.judge.classifyInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ category: 'not_enquiry', confidence: 'high', reason: 'newsletter' });
+    const summary = await runLoop(deps);
+    expect(deps.judge.classifyInbound).toHaveBeenCalledOnce();
+    expect(deps.judge.scopeEnquiry).not.toHaveBeenCalled();
+    expect(deps.repo.putDeal).not.toHaveBeenCalled();
+    expect(summary.disqualified).toBe(1);
+  });
+
+  it('surfaces a low-confidence message for review without drafting', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([inboundMsg({})]);
+    (deps.judge.classifyInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ category: 'enquiry', confidence: 'low', reason: 'maybe an enquiry' });
+    await runLoop(deps);
+    expect(deps.repo.putDeal).not.toHaveBeenCalled();
+    expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
+    const posted = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    expect(posted).toMatch(/[Rr]eview/);
+  });
+
+  it('skips the LLM for an automated sender', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([inboundMsg({ fromAddress: 'no-reply@aws.amazon.com', participants: ['no-reply@aws.amazon.com', 'sales@networkintelligence.ai'] })]);
+    const summary = await runLoop(deps);
+    expect(deps.judge.classifyInbound).not.toHaveBeenCalled();
+    expect(summary.disqualified).toBe(1);
+  });
+
+  it('creates a deal for a high-confidence enquiry with the verified sender', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([inboundMsg({})]);
+    await runLoop(deps);
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls[0][0] as Deal;
+    expect(stored.contact_email).toBe('sam@prospect.com');
+    expect(stored.intake.source).toBe('direct');
   });
 });
 

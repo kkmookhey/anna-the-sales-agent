@@ -3,6 +3,7 @@ import type { Deal, Scope, Stage } from '../state/types.js';
 import { emptyScope } from '../state/types.js';
 import { decideTransition, resolveScopeReview, resolveProposalReply } from './transitions.js';
 import { scanForInjection, verifiedRecipient } from '../gates/gates.js';
+import { isAutomatedSender } from './intake.js';
 import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
 import type { ProposalContent } from '../proposal/types.js';
@@ -70,14 +71,6 @@ export interface RunSummary {
   flagged: number;
 }
 
-const INTERNAL_DOMAIN = 'networkintelligence.ai';
-
-function isGenuineEnquiry(m: InboundMessage): boolean {
-  const internal = m.fromAddress.endsWith(`@${INTERNAL_DOMAIN}`);
-  const hasContent = htmlToText(m.bodyFull).trim().length > 20;
-  return !internal && hasContent;
-}
-
 function action(from: Stage, to: Stage, type: string, note: string, nowIso: string): Deal['actions'][number] {
   return { ts: nowIso, type, stage_from: from, stage_to: to, note };
 }
@@ -98,15 +91,33 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const originatingContext = new Map<string, { subject: string; body: string }>();
   const stagingLines: string[] = [];
 
+  const reviewLines: string[] = [];
+
   for (const m of inbound) {
     summary.processed++;
-    const existing = byConversation.get(m.conversationId);
-    if (existing) continue;
-    if (!isGenuineEnquiry(m)) {
+    if (byConversation.get(m.conversationId)) continue;
+
+    if (isAutomatedSender(m.fromAddress)) {
       summary.disqualified++;
-      stagingLines.push(`*Disqualified:* "${m.subject}" from \`${m.fromAddress}\` — internal/no enquiry content.`);
+      stagingLines.push(`*Disqualified:* "${m.subject}" from \`${m.fromAddress}\` — automated sender.`);
       continue;
     }
+
+    const body = htmlToText(m.bodyFull);
+    const verdict = await deps.judge.classifyInbound({
+      fromName: m.fromName, fromAddress: m.fromAddress, subject: m.subject, body,
+    });
+
+    if (verdict.category === 'not_enquiry') {
+      summary.disqualified++;
+      stagingLines.push(`*Disqualified:* "${m.subject}" from \`${m.fromAddress}\` — ${verdict.reason}.`);
+      continue;
+    }
+    if (verdict.confidence === 'low') {
+      reviewLines.push(`*Review (low-confidence):* "${m.subject}" from \`${m.fromAddress}\` — ${verdict.reason}. Not auto-drafted.`);
+      continue;
+    }
+
     const flags = scanForInjection(m.bodyPreview);
     if (flags.length) summary.flagged++;
     const fresh: Deal = {
@@ -129,7 +140,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       intake: { source: 'direct', recipient_verified: true },
     };
     byConversation.set(fresh.deal_id, fresh);
-    originatingContext.set(fresh.deal_id, { subject: m.subject, body: htmlToText(m.bodyFull) });
+    originatingContext.set(fresh.deal_id, { subject: m.subject, body });
   }
 
   for (const deal of byConversation.values()) {
@@ -149,7 +160,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const header = `:robot_face: *NI Sales Agent — run summary*${config.dryRun ? ' (dry-run)' : ''}\n` +
     `_${summary.processed} inbound · ${summary.staged} staged · ${summary.advanced} advanced · ` +
     `${summary.disqualified} disqualified · ${summary.flagged} flagged_`;
-  await slack.postStaging(config.slackChannelId, [header, ...stagingLines].join('\n\n'));
+  await slack.postStaging(config.slackChannelId, [header, ...stagingLines, ...reviewLines].join('\n\n'));
 
   return summary;
 }
