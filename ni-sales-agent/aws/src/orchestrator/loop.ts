@@ -118,7 +118,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       continue;
     }
 
-    const flags = scanForInjection(m.bodyPreview);
+    const flags = scanForInjection(body);
     if (flags.length) summary.flagged++;
 
     const forwarded = verdict.category === 'forwarded_enquiry';
