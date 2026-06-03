@@ -24,6 +24,20 @@ export function verifiedRecipient(candidate: string, participants: string[]): st
   return want;
 }
 
+/**
+ * DELIBERATELY UNVERIFIED recipient extracted from an email BODY (forwarded enquiry only).
+ * This bypasses participant verification on purpose — its safety rests on the draft-and-hold
+ * gate (no auto-send) plus a mandatory Slack flag at the call site. Do not use for the normal
+ * reply path; use verifiedRecipient there. Grep this symbol to audit every body-derived recipient.
+ */
+export function bodyDerivedRecipient(candidate: string): string {
+  const email = bareEmail(candidate);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    throw new Error(`bodyDerivedRecipient: not a usable email: ${candidate}`);
+  }
+  return email;
+}
+
 /** Throw unless the human's reply exactly equals the configured approval token. */
 export function assertApprovalToken(reply: string, expected: string): void {
   if (reply.trim() !== expected) {
