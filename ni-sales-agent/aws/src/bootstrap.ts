@@ -49,6 +49,7 @@ export async function buildDeps(env: Record<string, string | undefined> = proces
       scopeEnquiry: (i) => judge.scopeEnquiry(i),
       assessSufficiency: (i) => judge.assessSufficiency(i),
       draftFollowup: (i) => judge.draftFollowup(i),
+      classifyInbound: (i) => judge.classifyInbound(i),
       buildProposalContent: (i) => judge.buildProposalContent(i),
       classifyProposalReply: (i) => judge.classifyProposalReply(i),
     },
