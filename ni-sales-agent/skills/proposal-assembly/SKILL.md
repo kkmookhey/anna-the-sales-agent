@@ -57,6 +57,6 @@ through it on a call. The deck is the artifact; the email is the handshake.
 ## Output
 
 - Proposal (PDF) at `./out/<company-slug>-proposal-v<n>.pdf`.
-- `deal.proposal = { pdf_path, version, staged_at }`.
+- `deal.proposal = { deck_path, version, staged_at }` (the `deck_path` field now holds the PDF's S3 URI).
 - Staged Outlook draft (proposal attached) + Slack staging post per CLAUDE.md format.
 - Stage transition to `PROPOSAL_PENDING_APPROVAL`.
