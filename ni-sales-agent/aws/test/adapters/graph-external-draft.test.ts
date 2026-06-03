@@ -39,7 +39,7 @@ describe('createDraftToExternal', () => {
     // Three fetch calls total: token, createReply POST, draft PATCH
     expect(fetchMock).toHaveBeenCalledTimes(3);
 
-    const [, postUrl, postInit] = fetchMock.mock.calls.map((c) => c[0] as string);
+    const [, postUrl] = fetchMock.mock.calls.map((c) => c[0] as string);
     expect(postUrl).toContain('createReply');
     expect((fetchMock.mock.calls[1]![1] as RequestInit).method).toBe('POST');
 
