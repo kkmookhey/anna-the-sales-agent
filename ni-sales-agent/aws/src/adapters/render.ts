@@ -20,8 +20,9 @@ export class RenderClient {
     );
     const text = res.Payload ? new TextDecoder().decode(res.Payload) : '';
     if (res.FunctionError) throw new Error(`render lambda failed: ${res.FunctionError} ${text}`);
+    if (!text) throw new Error('render lambda returned empty payload');
     const parsed = JSON.parse(text) as { pdfBase64?: string };
-    if (!parsed.pdfBase64) throw new Error('render lambda returned no pdfBase64');
+    if (!parsed.pdfBase64) throw new Error(`render lambda returned no pdfBase64: ${text}`);
     return Buffer.from(parsed.pdfBase64, 'base64');
   }
 }
