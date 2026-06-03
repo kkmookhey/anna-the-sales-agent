@@ -328,7 +328,7 @@ async function stageProposal(
   const version = (deal.proposal?.version ?? 0) + 1;
   const buf = await deck.render(content);
   const slug = deal.company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  const fileName = `${slug}-proposal-v${version}.pptx`;
+  const fileName = `${slug}-proposal-v${version}.pdf`;
   const deckUri = await s3.put(`proposals/${fileName}`, buf);
   deal.proposal = { deck_path: deckUri, version, staged_at: nowIso };
 

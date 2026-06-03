@@ -44,7 +44,7 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
       getMeta: vi.fn(async () => null),
       putMeta: vi.fn(async () => {}),
     },
-    s3: { put: vi.fn().mockResolvedValue('s3://ni-decks/proposals/novelty-wealth-v1.pptx') },
+    s3: { put: vi.fn().mockResolvedValue('s3://ni-decks/proposals/novelty-wealth-v1.pdf') },
     deck: { render: vi.fn().mockResolvedValue(Buffer.from('PK deck')) },
     ...overrides,
   } as LoopDeps;
@@ -136,7 +136,7 @@ describe('runLoop — SCOPE_REVIEW proposal slice', () => {
 
     const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
     expect(stored.stage).toBe('PROPOSAL_PENDING_APPROVAL');
-    expect(stored.proposal.deck_path).toBe('s3://ni-decks/proposals/novelty-wealth-v1.pptx');
+    expect(stored.proposal.deck_path).toBe('s3://ni-decks/proposals/novelty-wealth-v1.pdf');
     expect(stored.proposal.version).toBe(1);
     expect(stored.scope.access_model).toBe('credentialed'); // merged from the sufficiency verdict
     expect(stored.last_inbound_at).toBe('2026-06-02T12:00:00Z'); // consumed the reply it ran sufficiency on
