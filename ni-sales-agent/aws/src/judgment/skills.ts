@@ -22,3 +22,18 @@ export function loadSkill(name: string): string {
   }
   throw new Error(`Skill not found: ${name} (looked in ${CANDIDATE_ROOTS.join(', ')})`);
 }
+
+const CONTENT_ROOTS = [
+  join(here, 'content'),
+  ...(process.env.LAMBDA_TASK_ROOT ? [join(process.env.LAMBDA_TASK_ROOT, 'content')] : []),
+  join(here, '..', 'content'),
+  join(here, '..', '..', 'content'),
+];
+
+export function loadContent(name: string): string {
+  for (const root of CONTENT_ROOTS) {
+    const path = join(root, `${name}.md`);
+    if (existsSync(path)) return readFileSync(path, 'utf8');
+  }
+  throw new Error(`Content not found: ${name} (looked in ${CONTENT_ROOTS.join(', ')})`);
+}

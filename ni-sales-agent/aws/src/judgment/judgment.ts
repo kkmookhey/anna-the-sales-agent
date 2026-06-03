@@ -1,5 +1,5 @@
 import type { BedrockJudge } from './bedrock.js';
-import { loadSkill } from './skills.js';
+import { loadSkill, loadContent } from './skills.js';
 import type { ProposalContent } from '../proposal/types.js';
 import type { Scope } from '../state/types.js';
 
@@ -101,12 +101,20 @@ export class JudgmentService {
     assumptions: string[];
   }): Promise<ProposalContent> {
     const system =
-      `${loadSkill('proposal-assembly')}\n\n${JSON_RULE}\n` +
+      `${loadSkill('proposal-assembly')}\n\n` +
+      `## Capability Library (grounding — quote facts from here; never invent)\n` +
+      `Use ONLY credentials, services, proof points and clients stated below. If the client's need ` +
+      `isn't covered here, say so plainly — do not fabricate.\n\n${loadContent('capability-library')}\n\n` +
+      `${JSON_RULE}\n` +
       'PRICING DISCIPLINE: if the captured scope cannot justify a firm price, set ' +
       'commercials.mode="placeholder" and say pricing will be confirmed. Never fabricate a figure.\n' +
       'Output keys: titleLine (string), understanding (string[]), scopeRows ({line,detail}[]), ' +
       'assumptions (string[]), approach (string[]), deliverables (string[]), timeline (string), ' +
-      'whyNi (string[]), commercials ({mode:"fixed"|"range"|"placeholder", text:string}), nextSteps (string[]).';
+      'whyNi (string[]), credentials (string[]), transilienceEdge (string[]), ' +
+      'commercials ({mode:"fixed"|"range"|"placeholder", text:string}), nextSteps (string[]). ' +
+      'Populate `credentials` from the library (lead with PCI QSA, PCI PIN Assessor, CREST, HITRUST ' +
+      'on technical engagements). Populate `transilienceEdge` only when it strengthens this case; ' +
+      'otherwise return [].';
     const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines'>>(
       system,
       JSON.stringify(input),

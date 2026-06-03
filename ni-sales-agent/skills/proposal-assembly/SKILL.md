@@ -11,12 +11,7 @@ commitments beyond what scoping supports, and you make every assumption visible.
 
 ## Rendering
 
-Delegate all visual rendering to the **`ni-branded-pptx`** skill — do not hand-build
-slides. That skill owns the palette (Purple `58298F`, Crimson `B61A3F`, Yellow `FCE205`),
-fonts (Trebuchet MS / Calibri), logo placement, dark/light slide rhythm, and the dot-
-matrix / gradient motifs. Build with `pptxgenjs` per that skill's implementation notes.
-
-Save to `./out/<company-slug>-proposal-v<n>.pptx` and record it in `deal.proposal`.
+Rendering is handled downstream as a branded **PDF** — this skill only produces the proposal *content* (structured JSON), not slides.
 
 ## Deck structure (proposal variant of the NI deck pattern)
 
@@ -40,6 +35,8 @@ Adapt `ni-branded-pptx`'s standard structure to a proposal. Keep it tight — 8�
    fabricate a figure.
 9. **Next steps / CTA** (Dark) — how to proceed, who to contact.
 
+Populate `credentials` (lead with PCI QSA, PCI PIN Assessor, CREST, HITRUST) and `transilienceEdge` from the capability library; never invent.
+
 Drop slides that don't apply (e.g. no `transilience` slide for a pure pentest deal).
 
 ## Pricing discipline
@@ -59,7 +56,7 @@ through it on a call. The deck is the artifact; the email is the handshake.
 
 ## Output
 
-- Deck at `./out/<company-slug>-proposal-v<n>.pptx`.
-- `deal.proposal = { deck_path, version, staged_at }`.
+- Proposal (PDF) at `./out/<company-slug>-proposal-v<n>.pdf`.
+- `deal.proposal = { pdf_path, version, staged_at }`.
 - Staged Outlook draft (proposal attached) + Slack staging post per CLAUDE.md format.
 - Stage transition to `PROPOSAL_PENDING_APPROVAL`.
