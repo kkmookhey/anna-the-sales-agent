@@ -29,8 +29,9 @@ Make the NI Sales Agent's intake intelligent and forward-aware:
 - The injection scan still runs on forwarded bodies.
 - Existing tests stay green; new behavior is unit-tested.
 
-**Out of scope:** auto-sending any email; parsing attachments of forwards; multi-language classifier
-tuning; CRM dedup of the prospect.
+**Out of scope (this version):** auto-sending any email; parsing attachments of forwards;
+multi-language classifier tuning; CRM dedup of the prospect; and an **in-app human override** to
+reclassify or force a response (see §12 — the Slack "review" bucket is *informational only* now).
 
 ---
 
@@ -208,3 +209,19 @@ true` when absent (back-compat — they were all direct).
   `createDraftToExternal`, the forwarded branch + flag + fallback, CLAUDE.md gate update.
 
 Per the agreed sequencing, both slices are implemented and verified before any deploy.
+
+---
+
+## 12. Future (not in this version)
+
+The only human→app signals today are: (1) sending the Outlook draft (= email approval, detected via
+`wasReplySent`); (2) replying `SHIP-IT` in Slack (= HubSpot-write approval, detected via
+`detectApproval`). The agent does **not** parse free-form Slack commands. Consequently, the
+low-confidence **review** messages from §3 are *informational only* — if the agent wrongly skips a
+real enquiry, the human handles that email manually for now.
+
+**Planned later — actionable review:** generalize the `detectApproval` Slack-read into a small
+command vocabulary so a human can act on a review/staging message in-channel — e.g. react ✅ or reply
+`ENQUIRY` on a low-confidence item → next tick the agent creates the deal and drafts; similarly a
+`REDO`/`RECIPIENT <addr>` affordance to correct a staged draft. This reuses the existing
+Slack-polling pattern and the draft-and-hold gates. Deferred per product decision (2026-06-03).
