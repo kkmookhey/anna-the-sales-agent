@@ -2,7 +2,7 @@ import type { Config } from '../config.js';
 import type { Deal, Scope, Stage } from '../state/types.js';
 import { emptyScope } from '../state/types.js';
 import { decideTransition, resolveScopeReview, resolveProposalReply } from './transitions.js';
-import { bareEmail, scanForInjection, verifiedRecipient } from '../gates/gates.js';
+import { bareEmail, bodyDerivedRecipient, scanForInjection, verifiedRecipient } from '../gates/gates.js';
 import { isAutomatedSender } from './intake.js';
 import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
@@ -307,11 +307,26 @@ async function stageDraft(
 ): Promise<AdvanceResult> {
   const { config, graph, repo } = deps;
   const replyToMessageId = latest?.id ?? deal.last_inbound_id;
+  const fwd = deal.intake.source === 'forwarded';
+  const toProspect = fwd ? deal.intake.proposed_recipient : undefined;
 
   let draftRef = '(dry-run — text below)';
+  let recipientFlag = '';
   if (!config.dryRun) {
-    const draftId = await graph.createDraftReply(replyToMessageId, bodyHtml);
-    draftRef = `Outlook draft created (id ${draftId})`;
+    if (toProspect) {
+      const to = bodyDerivedRecipient(toProspect);
+      const draftId = await graph.createDraftToExternal(replyToMessageId, bodyHtml, to);
+      draftRef = `Outlook draft created (id ${draftId})`;
+      recipientFlag = `\n:warning: Recipient \`${to}\` was extracted from a FORWARDED body — verify before sending. Forwarded by \`${deal.intake.forwarded_by ?? 'unknown'}\`.`;
+    } else {
+      const draftId = await graph.createDraftReply(replyToMessageId, bodyHtml);
+      draftRef = `Outlook draft created (id ${draftId})`;
+      if (fwd) recipientFlag = `\n:warning: Couldn't determine the prospect's address from the forward — set the recipient manually before sending.`;
+    }
+  } else if (fwd) {
+    recipientFlag = toProspect
+      ? `\n:warning: (dry-run) Would draft to body-derived recipient \`${toProspect}\` — verify before sending.`
+      : `\n:warning: (dry-run) Forwarded enquiry with no extractable prospect address — set recipient manually.`;
   }
 
   const from = deal.stage;
@@ -323,7 +338,7 @@ async function stageDraft(
     `*[STAGING — ${actionType}]* ${deal.company} / ${deal.contact_name}\n` +
     `Deal: \`${deal.deal_id}\`  Stage: ${from} → ${nextStage}\n` +
     `Summary: ${subject}\n` +
-    `Outlook draft: ${draftRef}\n` +
+    `Outlook draft: ${draftRef}${recipientFlag}\n` +
     `Approve by: sending the draft${nextStage === 'PO_PENDING_APPROVAL' ? '  |  replying SHIP-IT for HubSpot writes' : ''}\n` +
     `Flags: ${deal.flags.length ? deal.flags.map((f) => f.reason).join(', ') : 'none'}\n\n` +
     `> *Subject:* ${subject}\n> ${htmlToText(bodyHtml).slice(0, 1500)}`;

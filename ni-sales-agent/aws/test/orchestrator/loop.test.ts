@@ -24,6 +24,7 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
         },
       ]),
       createDraftReply: vi.fn().mockResolvedValue('draft-1'),
+      createDraftToExternal: vi.fn().mockResolvedValue('draft-ext-1'),
       wasReplySent: vi.fn().mockResolvedValue(false),
       latestInboundInConversation: vi.fn().mockResolvedValue(null),
       addAttachment: vi.fn().mockResolvedValue(undefined),
@@ -329,5 +330,49 @@ describe('runLoop — PROPOSAL_SENT reply slice', () => {
     expect(deps.hubspot.createDeal).toHaveBeenCalledOnce();
     const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
     expect(stored.stage).toBe('WON');
+  });
+});
+
+describe('runLoop — forwarded draft routing', () => {
+  const fwdMsg = {
+    id: 'mf', conversationId: 'conv-f', subject: 'Fwd: pentest enquiry', fromName: 'Suraj',
+    fromAddress: 'suraj@networkintelligence.ai',
+    participants: ['suraj@networkintelligence.ai', 'sales@networkintelligence.ai'],
+    receivedDateTime: '2026-06-02T14:00:00Z', bodyPreview: 'fyi', hasAttachments: false,
+    bodyFull: '<p>FYI from Priya priya@acmebank.com needs a pentest</p>',
+  };
+  const fwdVerdict = (over: Record<string, unknown>) => ({ category: 'forwarded_enquiry', confidence: 'high', reason: 'fwd', ...over });
+
+  it('drafts to the prospect with a verify-recipient flag', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([fwdMsg]);
+    (deps.judge.classifyInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce(fwdVerdict({ original_sender: { name: 'Priya', email: 'priya@acmebank.com' } }));
+    await runLoop(deps);
+    expect(deps.graph.createDraftToExternal).toHaveBeenCalledWith('mf', expect.any(String), 'priya@acmebank.com');
+    expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
+    const posted = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    expect(posted).toContain('priya@acmebank.com');
+    expect(posted).toMatch(/verify before sending/i);
+    expect(posted).toContain('suraj@networkintelligence.ai');
+  });
+
+  it('falls back to the forwarder when no prospect address was extracted', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([fwdMsg]);
+    (deps.judge.classifyInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce(fwdVerdict({}));
+    await runLoop(deps);
+    expect(deps.graph.createDraftReply).toHaveBeenCalled();
+    expect(deps.graph.createDraftToExternal).not.toHaveBeenCalled();
+    const posted = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    expect(posted).toMatch(/set the recipient manually/i);
+  });
+
+  it('drafts a direct enquiry as a normal reply with no recipient flag', async () => {
+    const deps = baseDeps({});
+    await runLoop(deps);
+    expect(deps.graph.createDraftReply).toHaveBeenCalled();
+    expect(deps.graph.createDraftToExternal).not.toHaveBeenCalled();
+    const posted = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    expect(posted).not.toMatch(/verify before sending/i);
   });
 });
