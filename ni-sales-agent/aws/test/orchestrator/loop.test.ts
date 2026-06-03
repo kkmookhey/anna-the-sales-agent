@@ -375,4 +375,25 @@ describe('runLoop — forwarded draft routing', () => {
     const posted = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
     expect(posted).not.toMatch(/verify before sending/i);
   });
+
+  it('treats a malformed extracted email as no recipient (no crash, manual fallback)', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([{
+      id: 'mx', conversationId: 'conv-x', subject: 'Fwd: enquiry', fromName: 'Suraj',
+      fromAddress: 'suraj@networkintelligence.ai',
+      participants: ['suraj@networkintelligence.ai', 'sales@networkintelligence.ai'],
+      receivedDateTime: '2026-06-02T14:00:00Z', bodyPreview: 'fyi', hasAttachments: false,
+      bodyFull: '<p>fyi</p>',
+    }]);
+    (deps.judge.classifyInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      category: 'forwarded_enquiry', confidence: 'high', reason: 'fwd',
+      original_sender: { name: 'Priya', email: 'not-an-email' }, // malformed
+    });
+    await expect(runLoop(deps)).resolves.toBeDefined(); // does NOT throw
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls[0][0] as Deal;
+    expect(stored.intake.source).toBe('forwarded');
+    expect(stored.intake.proposed_recipient).toBeUndefined();
+    expect(deps.graph.createDraftToExternal).not.toHaveBeenCalled();
+    expect(deps.graph.createDraftReply).toHaveBeenCalled();
+  });
 });

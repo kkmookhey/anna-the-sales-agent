@@ -144,7 +144,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       actions: [],
       flags: flags.map((reason) => ({ ts: nowIso, message_id: m.id, reason })),
       intake: forwarded
-        ? { source: 'forwarded', forwarded_by: bareEmail(m.fromAddress), proposed_recipient: prospect?.email, recipient_verified: false }
+        ? { source: 'forwarded', forwarded_by: bareEmail(m.fromAddress), proposed_recipient: prospect?.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(prospect.email.trim()) ? prospect.email.trim() : undefined, recipient_verified: false }
         : { source: 'direct', recipient_verified: true },
     };
     byConversation.set(fresh.deal_id, fresh);
