@@ -20,6 +20,8 @@ export interface ProposalContent {
   deliverables: string[];
   timeline: string;
   whyNi: string[];
+  credentials: string[];
+  transilienceEdge: string[];
   commercials: Commercials;
   nextSteps: string[];
 }

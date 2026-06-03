@@ -17,6 +17,8 @@ const content: ProposalContent = {
   deliverables: ['CERT-In compliant report with remediation', 'Re-test of fixed findings'],
   timeline: '~4 weeks including re-test',
   whyNi: ['CERT-In empanelled auditor', 'BFSI/fintech testing experience'],
+  credentials: ['CREST Accredited', 'CERT-In Empanelled', 'PCI QSA & PIN Assessor', 'HITRUST Assessor'],
+  transilienceEdge: [],
   commercials: { mode: 'placeholder', text: 'Indicative pricing to be confirmed after scoping.' },
   nextSteps: ['Sign NDA', 'Share builds + credentials', 'Kick-off call'],
 };
