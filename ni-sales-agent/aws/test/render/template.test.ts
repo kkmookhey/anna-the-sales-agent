@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderProposalHtml } from '../../src/render/template.js';
+import { renderProposalHtml, esc } from '../../src/render/template.js';
 import type { ProposalContent } from '../../src/proposal/types.js';
 
 const content: ProposalContent = {
@@ -34,9 +34,7 @@ describe('renderProposalHtml', () => {
   it('renders the must-highlight credentials', () => {
     const html = renderProposalHtml(content);
     for (const c of content.credentials) {
-      const escaped = c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      expect(html).toContain(escaped);
+      expect(html).toContain(esc(c));
     }
   });
 
@@ -49,6 +47,19 @@ describe('renderProposalHtml', () => {
   it('omits a section when its content is empty (transilienceEdge)', () => {
     const html = renderProposalHtml(content);
     expect(html).not.toContain('The Transilience AI edge');
+  });
+
+  it('renders the scope table with headers and escaped rows', () => {
+    const html = renderProposalHtml(content);
+    expect(html).toContain('<th>Service line</th>');
+    expect(html).toContain('<th>In scope</th>');
+    expect(html).toContain('Mobile VAPT');
+    expect(html).toContain('Android + iOS, ~95 screens (OWASP MASVS/MSTG)');
+  });
+
+  it('renders the commercials text', () => {
+    const html = renderProposalHtml(content);
+    expect(html).toContain('Indicative pricing to be confirmed after scoping.');
   });
 
   it('escapes HTML in content to prevent broken markup', () => {

@@ -1,7 +1,7 @@
 import type { ProposalContent } from '../proposal/types.js';
 import { JOST_400, JOST_600, ROBOTO_400, ROBOTO_500, NI_LOGO_PNG } from './assets.generated.js';
 
-const esc = (s: string): string =>
+export const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
@@ -49,11 +49,13 @@ const logoTag = `<img class="logo" src="data:image/png;base64,${NI_LOGO_PNG}" al
 const foot = (n: number, total: number) =>
   `<div class="foot"><span>Network Intelligence · Confidential</span><span>${n} / ${total}</span></div>`;
 
+// Renders a bulleted list. Each item is HTML-escaped here (the sink), so callers may
+// safely compose items from untrusted content + literal text before passing them in.
 const ul = (items: string[]) => `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>`;
 
 function listSection(eyebrow: string, title: string, items: string[]): string | null {
   if (!items.length) return null;
-  return `<section class="body"><div class="eyebrow">${esc(eyebrow)}</div><h2>${esc(title)}</h2>${ul(items)}</section>`;
+  return `<section><div class="eyebrow">${esc(eyebrow)}</div><h2>${esc(title)}</h2>${ul(items)}</section>`;
 }
 
 export function renderProposalHtml(content: ProposalContent): string {
