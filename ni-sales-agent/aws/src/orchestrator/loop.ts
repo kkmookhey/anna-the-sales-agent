@@ -2,7 +2,7 @@ import type { Config } from '../config.js';
 import type { Deal, Scope, Stage } from '../state/types.js';
 import { emptyScope } from '../state/types.js';
 import { decideTransition, resolveScopeReview, resolveProposalReply } from './transitions.js';
-import { scanForInjection, verifiedRecipient } from '../gates/gates.js';
+import { bareEmail, scanForInjection, verifiedRecipient } from '../gates/gates.js';
 import { isAutomatedSender } from './intake.js';
 import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
@@ -120,12 +120,18 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
 
     const flags = scanForInjection(m.bodyPreview);
     if (flags.length) summary.flagged++;
+
+    const forwarded = verdict.category === 'forwarded_enquiry';
+    const prospect = forwarded ? verdict.original_sender : undefined;
+
     const fresh: Deal = {
       deal_id: m.conversationId,
       stage: 'NEW',
-      company: domainToCompany(m.fromAddress),
-      contact_name: m.fromName,
-      contact_email: verifiedRecipient(m.fromAddress, m.participants),
+      company: prospect?.email ? domainToCompany(prospect.email) : domainToCompany(m.fromAddress),
+      contact_name: prospect?.name ?? m.fromName,
+      contact_email: forwarded
+        ? (prospect?.email ?? '')
+        : verifiedRecipient(m.fromAddress, m.participants),
       service_lines: [],
       created_at: m.receivedDateTime,
       last_inbound_id: m.id,
@@ -137,7 +143,9 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       proposal: null,
       actions: [],
       flags: flags.map((reason) => ({ ts: nowIso, message_id: m.id, reason })),
-      intake: { source: 'direct', recipient_verified: true },
+      intake: forwarded
+        ? { source: 'forwarded', forwarded_by: bareEmail(m.fromAddress), proposed_recipient: prospect?.email, recipient_verified: false }
+        : { source: 'direct', recipient_verified: true },
     };
     byConversation.set(fresh.deal_id, fresh);
     originatingContext.set(fresh.deal_id, { subject: m.subject, body });
@@ -256,7 +264,9 @@ async function advanceDeal(
       });
       deal.service_lines = scoped.service_lines;
       deal.scope = { ...deal.scope, ...scoped.scope, service_lines: scoped.service_lines };
-      if (scoped.company?.trim()) deal.company = scoped.company.trim(); // prefer the real company over the email-domain guess
+      // For direct enquiries prefer the LLM-extracted company over the email-domain guess.
+      // For forwarded enquiries the prospect's email domain is already set; don't override it.
+      if (scoped.company?.trim() && deal.intake.source !== 'forwarded') deal.company = scoped.company.trim();
       return stageDraft(deal, t.nextStage, scoped.draft_subject, scoped.draft_body_html, 'scoping_staged', deps, nowIso, null);
     }
 

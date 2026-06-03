@@ -243,6 +243,43 @@ describe('runLoop — reply consumption', () => {
   });
 });
 
+describe('runLoop — forwarded intake', () => {
+  const fwdMsg = {
+    id: 'mf', conversationId: 'conv-f', subject: 'Fwd: pentest enquiry', fromName: 'Suraj',
+    fromAddress: 'suraj@networkintelligence.ai',
+    participants: ['suraj@networkintelligence.ai', 'sales@networkintelligence.ai'],
+    receivedDateTime: '2026-06-02T14:00:00Z', bodyPreview: 'fyi', hasAttachments: false,
+    bodyFull: '<p>FYI ---- From: Priya &lt;priya@acmebank.com&gt; we need a pentest ----</p>',
+  };
+
+  it('populates intake from the extracted prospect for a forwarded enquiry', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([fwdMsg]);
+    (deps.judge.classifyInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      category: 'forwarded_enquiry', confidence: 'high', reason: 'forwarded prospect enquiry',
+      original_sender: { name: 'Priya', email: 'priya@acmebank.com' },
+    });
+    await runLoop(deps);
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls[0][0] as Deal;
+    expect(stored.intake).toEqual({ source: 'forwarded', forwarded_by: 'suraj@networkintelligence.ai', proposed_recipient: 'priya@acmebank.com', recipient_verified: false });
+    expect(stored.contact_name).toBe('Priya');
+    expect(stored.company).toBe('Acmebank');
+  });
+
+  it('marks a forward with no extractable sender for manual recipient', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([fwdMsg]);
+    (deps.judge.classifyInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      category: 'forwarded_enquiry', confidence: 'high', reason: 'forwarded, sender unclear',
+    });
+    await runLoop(deps);
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls[0][0] as Deal;
+    expect(stored.intake.source).toBe('forwarded');
+    expect(stored.intake.recipient_verified).toBe(false);
+    expect(stored.intake.proposed_recipient).toBeUndefined();
+  });
+});
+
 describe('runLoop — PROPOSAL_SENT reply slice', () => {
   it('PROPOSAL_SENT + PO reply stages a threaded PO approval and stores the thread ts', async () => {
     const deps = baseDeps({});
