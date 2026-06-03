@@ -33,7 +33,11 @@ describe('renderProposalHtml', () => {
 
   it('renders the must-highlight credentials', () => {
     const html = renderProposalHtml(content);
-    for (const c of content.credentials) expect(html).toContain(c);
+    for (const c of content.credentials) {
+      const escaped = c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      expect(html).toContain(escaped);
+    }
   });
 
   it('embeds the brand fonts as @font-face data URIs', () => {

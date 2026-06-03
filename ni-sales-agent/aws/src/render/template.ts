@@ -94,7 +94,7 @@ export function renderProposalHtml(content: ProposalContent): string {
   if (content.credentials.length) {
     pages.push(
       `<section><div class="eyebrow">Why us</div><h2>Credentials</h2>` +
-      `<div class="chips">${content.credentials.map((c) => `<span class="chip">${c}</span>`).join('')}</div></section>`,
+      `<div class="chips">${content.credentials.map((c) => `<span class="chip">${esc(c)}</span>`).join('')}</div></section>`,
     );
   }
 
