@@ -333,6 +333,30 @@ describe('runLoop — PROPOSAL_SENT reply slice', () => {
   });
 });
 
+describe('runLoop — per-deal error isolation', () => {
+  it('isolates a per-deal error so other deals still process', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]); // no new inbound
+    const mkDeal = (id: string): Deal => ({
+      deal_id: id, stage: 'SCOPING_PENDING_APPROVAL', company: 'C', contact_name: 'N', contact_email: 'a@b.com',
+      service_lines: [], created_at: '2026-06-01T00:00:00Z', last_inbound_id: 'x', last_inbound_at: '2026-06-01T00:00:00Z',
+      next_followup_date: null, followup_count: 0,
+      scope: { service_lines: [], asset_count: null, environment: null, compliance_driver: null, timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+      assumptions: [], proposal: null, actions: [], flags: [], intake: { source: 'direct', recipient_verified: true },
+    });
+    await deps.repo.putDeal(mkDeal('bad'));
+    await deps.repo.putDeal(mkDeal('good'));
+    (deps.graph.wasReplySent as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockImplementation(async (id: string) => {
+      if (id === 'bad') throw new Error('Graph 400 boom');
+      return null;
+    });
+    const summary = await runLoop(deps);
+    expect(summary.errors).toBe(1);
+    // the 'good' deal was still visited (no throw); run completed
+  });
+});
+
 describe('runLoop — forwarded draft routing', () => {
   const fwdMsg = {
     id: 'mf', conversationId: 'conv-f', subject: 'Fwd: pentest enquiry', fromName: 'Suraj',

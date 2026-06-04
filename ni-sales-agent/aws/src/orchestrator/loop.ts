@@ -69,6 +69,7 @@ export interface RunSummary {
   advanced: number;
   disqualified: number;
   flagged: number;
+  errors: number;
 }
 
 function action(from: Stage, to: Stage, type: string, note: string, nowIso: string): Deal['actions'][number] {
@@ -78,7 +79,7 @@ function action(from: Stage, to: Stage, type: string, note: string, nowIso: stri
 export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const { config, now, graph, slack, repo } = deps;
   const nowIso = now.toISOString();
-  const summary: RunSummary = { processed: 0, staged: 0, advanced: 0, disqualified: 0, flagged: 0 };
+  const summary: RunSummary = { processed: 0, staged: 0, advanced: 0, disqualified: 0, flagged: 0, errors: 0 };
 
   if (config.businessHoursOnly && !withinBusinessHours(now)) {
     logger.info('skip_outside_business_hours', { now: nowIso });
@@ -152,11 +153,17 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   }
 
   for (const deal of byConversation.values()) {
-    const line = await advanceDeal(deal, deps, nowIso, originatingContext.get(deal.deal_id) ?? null);
-    if (line) {
-      stagingLines.push(line.text);
-      if (line.staged) summary.staged++;
-      if (line.advanced) summary.advanced++;
+    try {
+      const line = await advanceDeal(deal, deps, nowIso, originatingContext.get(deal.deal_id) ?? null);
+      if (line) {
+        stagingLines.push(line.text);
+        if (line.staged) summary.staged++;
+        if (line.advanced) summary.advanced++;
+      }
+    } catch (err) {
+      summary.errors++;
+      logger.error('advance_deal_failed', { deal_id: deal.deal_id, error: err instanceof Error ? err.message : String(err) });
+      stagingLines.push(`:x: *Error advancing* ${deal.company} (\`${deal.deal_id}\`): ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -167,7 +174,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
 
   const header = `:robot_face: *NI Sales Agent — run summary*${config.dryRun ? ' (dry-run)' : ''}\n` +
     `_${summary.processed} inbound · ${summary.staged} staged · ${summary.advanced} advanced · ` +
-    `${summary.disqualified} disqualified · ${summary.flagged} flagged_`;
+    `${summary.disqualified} disqualified · ${summary.flagged} flagged · ${summary.errors} errors_`;
   await slack.postStaging(config.slackChannelId, [header, ...stagingLines, ...reviewLines].join('\n\n'));
 
   return summary;
