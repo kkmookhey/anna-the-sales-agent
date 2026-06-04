@@ -46,6 +46,51 @@ describe('SlackClient', () => {
     await expect(slack.postStaging('C1', 'hi')).rejects.toThrow(/channel_not_found/);
   });
 
+  it('detectApproval sends a GET request with channel and ts as query params (not a JSON POST)', async () => {
+    const fetchMock = mockFetch({
+      ok: true,
+      messages: [
+        { user: 'U_PARENT', text: 'original message' },
+        { user: 'U_OK', text: 'SHIP-IT' },
+      ],
+    });
+    const slack = new SlackClient('xoxb-test');
+    await slack.detectApproval('C1', '123.456', 'SHIP-IT', ['U_OK']);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect((init as RequestInit).method).toBe('GET');
+    const parsedUrl = new URL(url as string);
+    expect(parsedUrl.pathname).toBe('/api/conversations.replies');
+    expect(parsedUrl.searchParams.get('channel')).toBe('C1');
+    expect(parsedUrl.searchParams.get('ts')).toBe('123.456');
+    expect((init as RequestInit).body).toBeUndefined();
+  });
+
+  it('detectApproval returns true when approved user replied with exact token (via GET)', async () => {
+    mockFetch({
+      ok: true,
+      messages: [
+        { user: 'U_PARENT', text: 'original message' },
+        { user: 'U_OK', text: 'SHIP-IT' },
+      ],
+    });
+    const slack = new SlackClient('xoxb-test');
+    const result = await slack.detectApproval('C1', '123.456', 'SHIP-IT', ['U_OK']);
+    expect(result).toBe(true);
+  });
+
+  it('detectApproval returns false when no approved user replied with the token (via GET)', async () => {
+    mockFetch({
+      ok: true,
+      messages: [
+        { user: 'U_PARENT', text: 'original message' },
+        { user: 'U_OTHER', text: 'SHIP-IT' },
+      ],
+    });
+    const slack = new SlackClient('xoxb-test');
+    const result = await slack.detectApproval('C1', '123.456', 'SHIP-IT', ['U_OK']);
+    expect(result).toBe(false);
+  });
+
   it('upsertCanvas creates a canvas when no id is given and returns the new id', async () => {
     const fetchMock = mockFetch({ ok: true, canvas_id: 'F123' });
     const slack = new SlackClient('xoxb-test');
