@@ -28,6 +28,7 @@
     "puppeteer-core": "^23.11.1"
   },
   "devDependencies": {
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/jost": "^5.2.8",
     "@fontsource/roboto": "^5.2.10",
     "@types/aws-lambda": "^8.10.145",
