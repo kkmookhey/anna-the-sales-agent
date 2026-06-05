@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>IICA — Web Application Security Audit Proposal</title>
+  <link rel="stylesheet" href="colors_and_type.css">
+  <link rel="stylesheet" href="deck.css">
+  <link rel="stylesheet" href="proposal.css">
+  <script src="deck-stage.js" defer></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+<deck-stage width="1920" height="1080">
+
+  <!-- ============ 01 COVER ============ -->
+  <section class="slide slide-full" data-screen-label="01 Cover" style="padding:0;">
+    <div style="position:absolute; inset:0; background:#0A0A0B;"></div>
+    <div style="position:absolute; right:-340px; top:-180px; width:1500px; height:1500px; border-radius:50%; background:radial-gradient(circle at 30% 30%, #B61A3F 0%, #A01855 25%, #731E7A 55%, #582A90 80%, transparent 100%); opacity:0.85;"></div>
+    <div style="position:absolute; right:-120px; top:80px; width:980px; height:980px; border-radius:50%; background:radial-gradient(circle at 35% 35%, rgba(255,234,77,0.18) 0%, transparent 50%);"></div>
+    <div class="bg-grid" style="position:absolute; inset:0; opacity:0.6;"></div>
+
+    <div style="position:absolute; left:120px; top:80px; display:flex; align-items:center; gap:18px; z-index:3;">
+      <img src="assets/logo-mark.svg" style="height:54px;">
+      <div>
+        <div style="font-family:var(--font-display); font-weight:500; font-size:24px; line-height:1;">Network Intelligence</div>
+        <div style="font-family:var(--font-mono); font-size:11px; color:rgba(255,255,255,0.5); letter-spacing:0.18em; margin-top:6px; text-transform:uppercase;">The Digital Security Company</div>
+      </div>
+    </div>
+
+    <div style="position:absolute; right:120px; top:90px; z-index:3; text-align:right;">
+      <div style="font-family:var(--font-mono); font-size:11px; color:#FCE205; letter-spacing:0.22em; text-transform:uppercase;">● Confidential</div>
+      <div style="font-family:var(--font-mono); font-size:11px; color:rgba(255,255,255,0.45); letter-spacing:0.22em; text-transform:uppercase; margin-top:4px;">Technical Proposal</div>
+    </div>
+
+    <div style="position:relative; z-index:2; display:flex; flex-direction:column; justify-content:center; height:100%; padding:0 120px;">
+      <p class="eyebrow" style="margin-bottom:28px;">Proposal for Indian Institute of Corporate Affairs · June 2026</p>
+      <h1 class="title" style="font-size:150px; line-height:0.96; max-width:1500px; letter-spacing:-0.025em;">Web Application<br>Security Audit.</h1>
+      <p style="font-family:var(--font-display); font-size:40px; font-weight:300; color:rgba(255,255,255,0.85); margin:48px 0 0; max-width:1300px; line-height:1.2;">
+        CERT-In empanelled VAPT.&nbsp;
+        <span style="background:linear-gradient(90deg,#FCE205,#FFB800); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; font-weight:500;">GIGW 3.0 compliant. Audit-ready.</span>
+      </p>
+    </div>
+
+    <div style="position:absolute; left:120px; right:120px; bottom:80px; z-index:3; display:grid; grid-template-columns:repeat(4,1fr); gap:24px; padding-top:32px; border-top:1px solid rgba(255,255,255,0.12);">
+      <div>
+        <div style="font-family:var(--font-display); font-size:80px; font-weight:500; line-height:0.9;">25<span style="color:#FCE205;">+</span></div>
+        <p style="font-family:var(--font-display); font-size:13px; letter-spacing:0.22em; text-transform:uppercase; color:rgba(255,255,255,0.55); margin:14px 0 0;">Years in cybersecurity</p>
+      </div>
+      <div>
+        <div style="font-family:var(--font-display); font-size:80px; font-weight:500; line-height:0.9;">CERT-In</div>
+        <p style="font-family:var(--font-display); font-size:13px; letter-spacing:0.22em; text-transform:uppercase; color:rgba(255,255,255,0.55); margin:14px 0 0;">Empanelled auditor</p>
+      </div>
+      <div>
+        <div style="font-family:var(--font-display); font-size:80px; font-weight:500; line-height:0.9;">550<span style="color:#FCE205;">+</span></div>
+        <p style="font-family:var(--font-display); font-size:13px; letter-spacing:0.22em; text-transform:uppercase; color:rgba(255,255,255,0.55); margin:14px 0 0;">Security professionals</p>
+      </div>
+      <div>
+        <div style="font-family:var(--font-display); font-size:80px; font-weight:500; line-height:0.9;">200<span style="color:#FCE205;">+</span></div>
+        <p style="font-family:var(--font-display); font-size:13px; letter-spacing:0.22em; text-transform:uppercase; color:rgba(255,255,255,0.55); margin:14px 0 0;">Active engagements / yr</p>
+      </div>
+    </div>
+
+    <div style="position:absolute; left:120px; bottom:32px; z-index:3; font-family:var(--font-mono); font-size:11px; color:rgba(255,255,255,0.35); letter-spacing:0.18em;">
+      NI / IICA / IFP-IICA-WEB / v1.0
+    </div>
+  </section>
+
+  <!-- ============ 02 EXECUTIVE SUMMARY ============ -->
+  <section class="slide slide-light" data-screen-label="02 Executive summary">
+    <div class="head head-light">
+      <div class="mark"><img src="assets/logo-mark.svg"><span>Network Intelligence</span></div>
+      <div class="chapter">01 · Executive summary</div>
+    </div>
+    <div style="position:absolute; left:0; top:0; bottom:0; width:8px; background:linear-gradient(180deg,#582A90 0%,#A01855 50%,#B61A3F 100%);"></div>
+
+    <div style="margin-top:48px; max-width:1500px;">
+      <p class="eyebrow eyebrow-violet">Why Network Intelligence for IICA</p>
+      <div class="gradient-band" style="width:160px; margin:24px 0 28px;"></div>
+      <h2 class="title title-md" style="font-size:62px; font-weight:500;">A CERT-In empanelled audit, built for<br>a government website and GIGW 3.0.</h2>
+    </div>
+
+    <div style="margin-top:36px; max-width:1600px; display:grid; grid-template-columns:1fr 1fr; gap:56px;">
+      <p style="font-family:var(--font-body); font-size:19px; line-height:1.55; color:#3a3a40; margin:0;">
+        IICA needs a security audit of its public website (<strong style="color:#0A0A0B;">iica.nic.in</strong>) by a CERT-In empanelled agency, aligned to GIGW 3.0 and government security expectations. The assessment must cover the full public surface and the admin/CMS module that maintains it.
+      </p>
+      <p style="font-family:var(--font-body); font-size:19px; line-height:1.55; color:#3a3a40; margin:0;">
+        Network Intelligence brings 25 years of regulated-sector testing, CERT-In empanelment, and a remediation-driven model: we test to OWASP and CERT-In standards, deliver an audit-ready report mapped to GIGW 3.0, and re-audit after your team remediates — so you reach a clean, safe-to-host posture.
+      </p>
+    </div>
+
+    <div style="margin-top:48px; display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
+      <div class="pillar-card">
+        <div class="pillar-accent"></div>
+        <div class="pillar-icon"><i data-lucide="badge-check"></i></div>
+        <p class="pillar-num">01 / Pillar</p>
+        <h3 class="pillar-title">CERT-In empanelled &amp; GIGW-fluent</h3>
+        <p class="pillar-body">An empanelled auditor (mandatory for government audits) with hands-on GIGW 3.0 experience — your report is accepted, on the first pass.</p>
+      </div>
+      <div class="pillar-card">
+        <div class="pillar-accent"></div>
+        <div class="pillar-icon"><i data-lucide="layers"></i></div>
+        <p class="pillar-num">02 / Pillar</p>
+        <h3 class="pillar-title">Full surface, admin included</h3>
+        <p class="pillar-body">All 11 modules across ~150–250 pages, the dynamic input flows, and the authenticated CMS/Admin module — tested to OWASP Top 10, ASVS, PTES and NIST 800-115.</p>
+      </div>
+      <div class="pillar-card">
+        <div class="pillar-accent"></div>
+        <div class="pillar-icon"><i data-lucide="shield-check"></i></div>
+        <p class="pillar-num">03 / Pillar</p>
+        <h3 class="pillar-title">Remediation-driven, audit-ready</h3>
+        <p class="pillar-body">VAPT plus one re-audit after remediation, a CERT-In-compliant report, and a safe-to-host sign-off — closure, not just findings.</p>
+      </div>
+    </div>
+
+    <div class="foot foot-light"><span>NI · IICA Web Application Security Audit</span><span>02<span class="dot"></span>10</span></div>
+  </section>
+
+  <!-- ============ 03 UNDERSTANDING IICA ============ -->
+  <section class="slide bg-crimson-wash" data-screen-label="03 Understanding IICA">
+    <div class="head">
+      <div class="mark"><img src="assets/logo-mark.svg"><span>Network Intelligence</span></div>
+      <div class="chapter">02 · Understanding your environment</div>
+    </div>
+
+    <div style="margin-top:40px; max-width:1500px;">
+      <p class="eyebrow">The application we are assessing</p>
+      <div class="gradient-band" style="width:160px; margin:22px 0 26px;"></div>
+      <h2 class="title title-md" style="font-size:60px;">A public, content-rich government<br>website on the NIC platform.</h2>
+    </div>
+
+    <div style="margin-top:44px; display:grid; grid-template-columns:repeat(4,1fr); gap:18px;">
+      <div class="stat-tile"><div class="stat-tile-num">150–250</div><p class="stat-tile-lbl">Total pages</p></div>
+      <div class="stat-tile"><div class="stat-tile-num">40–60</div><p class="stat-tile-lbl">Dynamic / input pages</p></div>
+      <div class="stat-tile"><div class="stat-tile-num">11</div><p class="stat-tile-lbl">Modules incl. CMS / Admin</p></div>
+      <div class="stat-tile stat-tile-accent"><div class="stat-tile-num">GIGW 3.0</div><p class="stat-tile-lbl">+ CERT-In compliance</p></div>
+    </div>
+
+    <div style="margin-top:24px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div class="signal-row">
+        <div class="signal-icon"><i data-lucide="server"></i></div>
+        <div><div class="signal-title">Stack</div><p class="signal-desc">ASP.NET / C# on Windows Server 2012, IIS, SQL Server backend. Admin CMS in scope.</p></div>
+      </div>
+      <div class="signal-row">
+        <div class="signal-icon"><i data-lucide="globe-lock"></i></div>
+        <div><div class="signal-title">Surface</div><p class="signal-desc">Internet-facing, open to the public. No end-user login; Content-Editor &amp; Administrator roles via the CMS.</p></div>
+      </div>
+      <div class="signal-row">
+        <div class="signal-icon"><i data-lucide="git-merge"></i></div>
+        <div><div class="signal-title">Interfaces</div><p class="signal-desc">Email services, social links, registration forms, and a payment gateway (if course registrations use one).</p></div>
+      </div>
+      <div class="signal-row signal-row-accent">
+        <div class="signal-icon"><i data-lucide="calendar-clock"></i></div>
+        <div><div class="signal-title">Timeline</div><p class="signal-desc">Start immediately on award; complete in 2–3 weeks; one re-audit after remediation.</p></div>
+      </div>
+    </div>
+
+    <div class="foot"><span>NI · IICA Web Application Security Audit</span><span>03<span class="dot"></span>10</span></div>
+  </section>
+
+  <!-- ============ 04 SCOPE ============ -->
+  <section class="slide slide-light" data-screen-label="04 Scope">
+    <div class="head head-light">
+      <div class="mark"><img src="assets/logo-mark.svg"><span>Network Intelligence</span></div>
+      <div class="chapter">03 · Scope of work</div>
+    </div>
+    <div style="margin-top:44px; max-width:1500px;">
+      <p class="eyebrow eyebrow-violet">In scope</p>
+      <div class="gradient-band" style="width:160px; margin:22px 0 26px;"></div>
+      <h2 class="title title-md" style="font-size:60px;">Exactly what we will test.</h2>
+    </div>
+
+    <div style="margin-top:40px; display:flex; flex-direction:column; gap:0; max-width:1680px; border-top:1px solid rgba(10,10,11,0.12);">
+      <div style="display:grid; grid-template-columns:360px 1fr; gap:32px; padding:26px 8px; border-bottom:1px solid rgba(10,10,11,0.1);">
+        <div style="font-family:var(--font-display); font-size:24px; font-weight:500; color:#0A0A0B;">Web application VAPT</div>
+        <div style="font-family:var(--font-body); font-size:19px; color:#3a3a40; line-height:1.5;">All 11 modules across ~150–250 pages — authenticated &amp; unauthenticated — to OWASP Top 10, OWASP ASVS, PTES, NIST SP 800-115 and CERT-In guidelines.</div>
+      </div>
+      <div style="display:grid; grid-template-columns:360px 1fr; gap:32px; padding:26px 8px; border-bottom:1px solid rgba(10,10,11,0.1);">
+        <div style="font-family:var(--font-display); font-size:24px; font-weight:500; color:#0A0A0B;">Admin / CMS module</div>
+        <div style="font-family:var(--font-body); font-size:19px; color:#3a3a40; line-height:1.5;">Authenticated testing of the content-management and administrator interface — access control, privilege escalation, session and workflow security.</div>
+      </div>
+      <div style="display:grid; grid-template-columns:360px 1fr; gap:32px; padding:26px 8px; border-bottom:1px solid rgba(10,10,11,0.1);">
+        <div style="font-family:var(--font-display); font-size:24px; font-weight:500; color:#0A0A0B;">Input flows &amp; interfaces</div>
+        <div style="font-family:var(--font-body); font-size:19px; color:#3a3a40; line-height:1.5;">The 40–60 dynamic / input pages — registration forms, email and social integrations, and the payment-gateway interface where present.</div>
+      </div>
+      <div style="display:grid; grid-template-columns:360px 1fr; gap:32px; padding:26px 8px; border-bottom:1px solid rgba(10,10,11,0.1);">
+        <div style="font-family:var(--font-display); font-size:24px; font-weight:500; color:#0A0A0B;">Configuration &amp; GIGW 3.0</div>
+        <div style="font-family:var(--font-body); font-size:19px; color:#3a3a40; line-height:1.5;">Server, TLS and application configuration review, plus a GIGW 3.0 security-compliance mapping for the audit report.</div>
+      </div>
+    </div>
+
+    <div class="foot foot-light"><span>NI · IICA Web Application Security Audit</span><span>04<span class="dot"></span>10</span></div>
+  </section>
+
+  <!-- ============ 05 APPROACH ============ -->
+  <section class="slide bg-gradient-violet" data-screen-label="05 Approach">
+    <div class="head">
+      <div class="mark"><img src="assets/logo-mark.svg"><span>Network Intelligence</span></div>
+      <div class="chapter">04 · Approach &amp; methodology</div>
+    </div>
+    <div style="margin-top:40px; max-width:1500px;">
+      <p class="eyebrow">How we work</p>
+      <div class="gradient-band" style="width:160px; margin:22px 0 26px;"></div>
+      <h2 class="title title-md" style="font-size:60px;">A standards-led audit, ending in<br>a clean re-audit.</h2>
+    </div>
+
+    <div style="margin-top:48px; display:grid; grid-template-columns:repeat(4,1fr); gap:18px;">
+      <div class="tile">
+        <p class="mono" style="color:#FCE205; font-size:13px; letter-spacing:0.18em; text-transform:uppercase;">Phase 01</p>
+        <h3 style="font-family:var(--font-display); font-size:26px; font-weight:500; color:#fff; margin:0;">Recon &amp; mapping</h3>
+        <p class="body" style="font-size:17px;">Crawl and map all modules, pages and input flows. Confirm scope, credentials and the admin surface.</p>
+      </div>
+      <div class="tile">
+        <p class="mono" style="color:#FCE205; font-size:13px; letter-spacing:0.18em; text-transform:uppercase;">Phase 02</p>
+        <h3 style="font-family:var(--font-display); font-size:26px; font-weight:500; color:#fff; margin:0;">Test</h3>
+        <p class="body" style="font-size:17px;">Authenticated + unauthenticated testing to OWASP Top 10 / ASVS, PTES, NIST 800-115 and CERT-In — manual depth over scanner noise.</p>
+      </div>
+      <div class="tile">
+        <p class="mono" style="color:#FCE205; font-size:13px; letter-spacing:0.18em; text-transform:uppercase;">Phase 03</p>
+        <h3 style="font-family:var(--font-display); font-size:26px; font-weight:500; color:#fff; margin:0;">Report</h3>
+        <p class="body" style="font-size:17px;">CERT-In-compliant report — risk-rated findings, reproduction steps, remediation guidance, and a GIGW 3.0 mapping.</p>
+      </div>
+      <div class="tile tile-accent">
+        <p class="mono" style="color:#FCE205; font-size:13px; letter-spacing:0.18em; text-transform:uppercase;">Phase 04</p>
+        <h3 style="font-family:var(--font-display); font-size:26px; font-weight:500; color:#fff; margin:0;">Re-audit</h3>
+        <p class="body" style="font-size:17px;">Re-test fixed findings after your team remediates, and issue a safe-to-host sign-off.</p>
+      </div>
+    </div>
+
+    <div class="foot"><span>NI · IICA Web Application Security Audit</span><span>05<span class="dot"></span>10</span></div>
+  </section>
+
+  <!-- ============ 06 DELIVERABLES ============ -->
+  <section class="slide slide-light" data-screen-label="06 Deliverables">
+    <div class="head head-light">
+      <div class="mark"><img src="assets/logo-mark.svg"><span>Network Intelligence</span></div>
+      <div class="chapter">05 · Deliverables &amp; timeline</div>
+    </div>
+    <div style="margin-top:44px; max-width:1500px;">
+      <p class="eyebrow eyebrow-violet">What you get</p>
+      <div class="gradient-band" style="width:160px; margin:22px 0 26px;"></div>
+      <h2 class="title title-md" style="font-size:60px;">Audit-ready outputs.</h2>
+    </div>
+
+    <div style="margin-top:40px; display:grid; grid-template-columns:1fr 1fr; gap:18px 56px; max-width:1600px;">
+      <div style="display:flex; gap:16px; align-items:flex-start;"><i data-lucide="file-check-2" style="color:#582A90; width:28px; height:28px; stroke-width:1.5; flex:none;"></i><p style="font-family:var(--font-body); font-size:20px; color:#3a3a40; margin:0; line-height:1.5;"><strong style="color:#0A0A0B;">CERT-In-compliant audit report</strong> — executive summary + full technical detail.</p></div>
+      <div style="display:flex; gap:16px; align-items:flex-start;"><i data-lucide="list-checks" style="color:#582A90; width:28px; height:28px; stroke-width:1.5; flex:none;"></i><p style="font-family:var(--font-body); font-size:20px; color:#3a3a40; margin:0; line-height:1.5;"><strong style="color:#0A0A0B;">GIGW 3.0 compliance mapping</strong> for the website.</p></div>
+      <div style="display:flex; gap:16px; align-items:flex-start;"><i data-lucide="wrench" style="color:#582A90; width:28px; height:28px; stroke-width:1.5; flex:none;"></i><p style="font-family:var(--font-body); font-size:20px; color:#3a3a40; margin:0; line-height:1.5;"><strong style="color:#0A0A0B;">Prioritised remediation guidance</strong> per finding.</p></div>
+      <div style="display:flex; gap:16px; align-items:flex-start;"><i data-lucide="shield-check" style="color:#582A90; width:28px; height:28px; stroke-width:1.5; flex:none;"></i><p style="font-family:var(--font-body); font-size:20px; color:#3a3a40; margin:0; line-height:1.5;"><strong style="color:#0A0A0B;">Re-audit + safe-to-host certificate</strong> after remediation.</p></div>
+    </div>
+
+    <div style="margin-top:52px; display:inline-flex; align-items:center; gap:20px; background:#fff; border:1px solid rgba(10,10,11,0.1); border-radius:16px; padding:28px 40px;">
+      <i data-lucide="calendar-clock" style="color:#B61A3F; width:36px; height:36px; stroke-width:1.5;"></i>
+      <div>
+        <p style="font-family:var(--font-display); font-size:13px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(10,10,11,0.5); margin:0;">Indicative timeline</p>
+        <p style="font-family:var(--font-display); font-size:30px; font-weight:500; color:#0A0A0B; margin:6px 0 0;">~2–3 weeks to first report · re-audit after remediation</p>
+      </div>
+    </div>
+
+    <div class="foot foot-light"><span>NI · IICA Web Application Security Audit</span><span>06<span class="dot"></span>10</span></div>
+  </section>
+
+  <!-- ============ 07 CREDENTIALS ============ -->
+  <section class="slide" data-screen-label="07 Credentials" style="background:#0A0A0B;">
+    <div class="head">
+      <div class="mark"><img src="assets/logo-mark.svg"><span>Network Intelligence</span></div>
+      <div class="chapter">06 · Credentials</div>
+    </div>
+    <div style="margin-top:44px; max-width:1500px;">
+      <p class="eyebrow">Why us — proven, independently audited</p>
+      <div class="gradient-band" style="width:160px; margin:22px 0 26px;"></div>
+      <h2 class="title title-md" style="font-size:60px;">The accreditations a government<br>audit requires — and more.</h2>
+    </div>
+
+    <div style="margin-top:48px; display:flex; flex-wrap:wrap; gap:16px; max-width:1600px;">
+      <span class="chip"><span class="dot"></span>CREST Accredited</span>
+      <span class="chip"><span class="dot"></span>CERT-In Empanelled</span>
+      <span class="chip"><span class="dot"></span>PCI QSA</span>
+      <span class="chip"><span class="dot"></span>PCI PIN Assessor</span>
+      <span class="chip"><span class="dot"></span>HITRUST Assessor</span>
+      <span class="chip"><span class="dot"></span>ISO 27001</span>
+      <span class="chip"><span class="dot"></span>SOC 2 Type II</span>
+      <span class="chip"><span class="dot"></span>CSA Trusted</span>
+      <span class="chip"><span class="dot"></span>SWIFT CSP</span>
+    </div>
+
+    <p style="margin-top:48px; font-family:var(--font-display); font-size:26px; font-weight:300; color:rgba(255,255,255,0.8); max-width:1200px; line-height:1.4;">
+      Every accreditation is independently audited and renewed annually. Not a checkbox — an operating standard.
+    </p>
+
+    <div class="foot"><span>NI · IICA Web Application Security Audit</span><span>07<span class="dot"></span>10</span></div>
+  </section>
+
+  <!-- ============ 08 WHY NI ============ -->
+  <section class="slide bg-gradient-violet" data-screen-label="08 Why NI">
+    <div class="head">
+      <div class="mark"><img src="assets/logo-mark.svg"><span>Network Intelligence</span></div>
+      <div class="chapter">07 · Why Network Intelligence</div>
+    </div>
+    <div style="margin-top:40px; max-width:1500px;">
+      <p class="eyebrow">The fit</p>
+      <div class="gradient-band" style="width:160px; margin:22px 0 26px;"></div>
+      <h2 class="title title-md" style="font-size:60px;">Government-grade testing, with<br>an AI-native edge.</h2>
+    </div>
+
+    <div style="margin-top:48px; display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
+      <div class="tile">
+        <div class="pillar-icon"><i data-lucide="landmark"></i></div>
+        <h3 style="font-family:var(--font-display); font-size:28px; font-weight:500; color:#fff; margin:0;">Public-sector fluent</h3>
+        <p class="body" style="font-size:18px;">CERT-In empanelled, GIGW-experienced, with a long record across BFSI, government and regulated enterprises (170+ banks &amp; FS).</p>
+      </div>
+      <div class="tile">
+        <div class="pillar-icon"><i data-lucide="users"></i></div>
+        <h3 style="font-family:var(--font-display); font-size:28px; font-weight:500; color:#fff; margin:0;">Scale &amp; depth</h3>
+        <p class="body" style="font-size:18px;">25+ years, 550+ security professionals, 200+ active engagements a year, 4 global SOCs — manual testing depth, not scanner output.</p>
+      </div>
+      <div class="tile tile-accent">
+        <div class="pillar-icon"><i data-lucide="brain-circuit"></i></div>
+        <h3 style="font-family:var(--font-display); font-size:28px; font-weight:500; color:#fff; margin:0;">The Transilience AI edge</h3>
+        <p class="body" style="font-size:18px;">Our AI-native platform prioritises findings by exploitability, not raw severity — so remediation effort lands where real risk is.</p>
+      </div>
+    </div>
+
+    <div class="foot"><span>NI · IICA Web Application Security Audit</span><span>08<span class="dot"></span>10</span></div>
+  </section>
+
+  <!-- ============ 09 COMMERCIALS ============ -->
+  <section class="slide slide-light" data-screen-label="09 Commercials">
+    <div class="head head-light">
+      <div class="mark"><img src="assets/logo-mark.svg"><span>Network Intelligence</span></div>
+      <div class="chapter">08 · Commercials</div>
+    </div>
+    <div style="margin-top:44px; max-width:1500px;">
+      <p class="eyebrow eyebrow-violet">Commercials</p>
+      <div class="gradient-band" style="width:160px; margin:22px 0 26px;"></div>
+      <h2 class="title title-md" style="font-size:60px;">A fixed-fee audit, scoped to<br>your application.</h2>
+    </div>
+    <p style="margin-top:36px; font-family:var(--font-body); font-size:22px; line-height:1.55; color:#3a3a40; max-width:1300px;">
+      We propose a <strong style="color:#0A0A0B;">fixed fee per audit cycle</strong> covering the full web application VAPT, the admin/CMS module, and the GIGW 3.0 mapping — with the post-remediation re-audit included. Indicative pricing will be confirmed on a short scoping call once test credentials and the final page/module count are agreed.
+    </p>
+    <div style="margin-top:36px; display:inline-flex; align-items:center; gap:14px; background:#fff; border:1px solid rgba(10,10,11,0.1); border-radius:12px; padding:18px 26px;">
+      <i data-lucide="info" style="color:#582A90; width:22px; height:22px; stroke-width:1.5;"></i>
+      <span style="font-family:var(--font-body); font-size:17px; color:#3a3a40;">Pricing follows scope confirmation — no surprises, no per-finding charges.</span>
+    </div>
+    <div class="foot foot-light"><span>NI · IICA Web Application Security Audit</span><span>09<span class="dot"></span>10</span></div>
+  </section>
+
+  <!-- ============ 10 NEXT STEPS ============ -->
+  <section class="slide slide-full" data-screen-label="10 Next steps" style="padding:0;">
+    <div style="position:absolute; inset:0; background:#0A0A0B;"></div>
+    <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:1200px; height:1200px; border-radius:50%; background:radial-gradient(circle, rgba(88,42,144,0.35) 0%, rgba(182,26,63,0.18) 40%, transparent 70%);"></div>
+    <div class="bg-grid" style="position:absolute; inset:0; opacity:0.5;"></div>
+
+    <div class="head">
+      <div class="mark"><img src="assets/logo-mark.svg"><span>Network Intelligence</span></div>
+      <div class="chapter">09 · Next steps</div>
+    </div>
+
+    <div style="position:relative; z-index:2; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; padding:120px;">
+      <img src="assets/logo-mark.svg" style="height:80px; margin-bottom:36px;">
+      <p class="eyebrow" style="margin-bottom:18px;">● Next steps</p>
+      <h2 class="title" style="font-size:88px; font-weight:500; text-align:center; max-width:1500px; line-height:1.05; letter-spacing:-0.02em;">
+        Let's secure IICA's<br>website together.
+      </h2>
+      <div class="gradient-band" style="width:240px; margin:36px 0 52px;"></div>
+
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:18px; width:100%; max-width:1500px;">
+        <div class="cta-card">
+          <div class="cta-icon"><i data-lucide="phone-call"></i></div>
+          <p class="cta-num">01 · This week</p>
+          <h4 class="cta-title">Kickoff call</h4>
+          <p>A short call to confirm scope, test credentials, and the admin/CMS surface, and align on the GIGW 3.0 report format.</p>
+        </div>
+        <div class="cta-card">
+          <div class="cta-icon"><i data-lucide="key-round"></i></div>
+          <p class="cta-num">02 · On award</p>
+          <h4 class="cta-title">Access &amp; scope sign-off</h4>
+          <p>Share the test environment and credentials; we lock the final page/module count and the fixed fee.</p>
+        </div>
+        <div class="cta-card">
+          <div class="cta-icon"><i data-lucide="rocket"></i></div>
+          <p class="cta-num">03 · Immediately after</p>
+          <h4 class="cta-title">Audit start</h4>
+          <p>Testing begins at once; first report in ~2–3 weeks, with a re-audit after your team remediates.</p>
+        </div>
+      </div>
+
+      <div style="margin-top:52px; display:flex; gap:48px; flex-wrap:wrap; justify-content:center; padding:24px 56px; border-top:1px solid rgba(255,255,255,0.1); border-bottom:1px solid rgba(255,255,255,0.1);">
+        <div style="display:flex; align-items:center; gap:12px; font-family:var(--font-display); font-size:18px; color:rgba(255,255,255,0.85);">
+          <i data-lucide="mail" style="color:#FCE205; width:20px; height:20px; stroke-width:1.5;"></i>
+          sales@networkintelligence.ai
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; font-family:var(--font-display); font-size:18px; color:rgba(255,255,255,0.85);">
+          <i data-lucide="globe" style="color:#FCE205; width:20px; height:20px; stroke-width:1.5;"></i>
+          networkintelligence.ai
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; font-family:var(--font-display); font-size:18px; color:rgba(255,255,255,0.85);">
+          <i data-lucide="badge-check" style="color:#FCE205; width:20px; height:20px; stroke-width:1.5;"></i>
+          CERT-In Empanelled · CREST Accredited
+        </div>
+      </div>
+
+      <p style="margin-top:28px; font-family:var(--font-display); font-size:13px; letter-spacing:0.22em; text-transform:uppercase; color:rgba(255,255,255,0.45);">
+        Network Intelligence · The Digital Security Company
+      </p>
+    </div>
+  </section>
+
+</deck-stage>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 160" width="800" height="160">
+  <defs>
+    <linearGradient id="trg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#582A90"></stop>
+      <stop offset="22%" stop-color="#731E7A"></stop>
+      <stop offset="55%" stop-color="#A01855"></stop>
+      <stop offset="100%" stop-color="#B61A3F"></stop>
+    </linearGradient>
+  </defs>
+  
+  <g transform="translate(20,18) scale(0.42)">
+    <path d="M 60 170&#xA;             C 60 90, 170 90, 230 160&#xA;             C 290 230, 400 230, 400 150&#xA;             C 400 70, 290 70, 230 140&#xA;             C 170 210, 60 210, 60 130 Z" fill="none" stroke="url(#trg)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"></path>
+  </g>
+  
+  <text x="220" y="102" font-family="Jost, Futura, &#39;Century Gothic&#39;, sans-serif" font-size="68" font-weight="500" fill="#FFFFFF" letter-spacing="-1">TRANSILIENCE</text>
+  <text x="220" y="132" font-family="Jost, Futura, &#39;Century Gothic&#39;, sans-serif" font-size="18" font-weight="500" fill="#B5B5BC" letter-spacing="6">FULL STACK SECURITY OS</text>
+</svg>
