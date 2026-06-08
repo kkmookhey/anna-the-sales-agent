@@ -148,10 +148,16 @@ export class JudgmentService {
       'Output keys: titleLine (string), understanding (string[]), scopeRows ({line,detail}[]), ' +
       'assumptions (string[]), approach (string[]), deliverables (string[]), timeline (string), ' +
       'whyNi (string[]), credentials (string[]), transilienceEdge (string[]), ' +
-      'commercials ({mode:"fixed"|"range"|"placeholder", text:string}), nextSteps (string[]). ' +
+      'commercials ({mode:"fixed"|"range"|"placeholder", text:string}), nextSteps (string[]), ' +
+      'understandingStats ({value,label}[] — 3–4 deal-specific quantified facts for stat tiles, e.g. asset counts, page counts, environments), ' +
+      'pillars ({title,body}[] — up to 3 reasons NI fits THIS engagement, each a short title + 1–2 sentence body), ' +
+      'signals ({title,detail}[] — environment facts: stack, surface, interfaces, timeline), ' +
+      'approachPhases ({name,detail}[] — the ordered methodology phases for this engagement), ' +
+      'ctaSteps ({when,title,detail}[] — exactly 3 next-step cards). ' +
       'Populate `credentials` from the library (lead with PCI QSA, PCI PIN Assessor, CREST, HITRUST ' +
       'on technical engagements). Populate `transilienceEdge` only when it strengthens this case; ' +
-      'otherwise return [].';
+      'otherwise return []. ' +
+      'Keep commercials.text to ONE short sentence — detailed pricing/terms live in a separate commercials document, not the deck.';
     const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines'>>(
       system,
       JSON.stringify(input),

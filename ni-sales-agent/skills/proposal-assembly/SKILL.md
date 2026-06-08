@@ -39,6 +39,18 @@ Populate `credentials` (lead with PCI QSA, PCI PIN Assessor, CREST, HITRUST) and
 
 Drop slides that don't apply (e.g. no `transilience` slide for a pure pentest deal).
 
+## Structured deck fields
+
+Populate these five fields from the captured scope and the capability library — do not invent:
+
+- `understandingStats` — 3–4 quantified facts for stat tiles (asset counts, page counts, environments, deadlines). Use numbers from the scope; skip if not available.
+- `pillars` — up to 3 reasons NI is the right fit for THIS engagement (short title + 1–2 sentence body grounded in credentials or methodology).
+- `signals` — environment facts extracted from scope: stack, surfaces, interfaces, timeline.
+- `approachPhases` — the ordered methodology phases for this engagement (e.g. Recon → Exploitation → Reporting).
+- `ctaSteps` — exactly 3 next-step cards ({when, title, detail}).
+
+For `commercials.text`: keep it to ONE short sentence. Detailed pricing and payment terms belong in a separate commercials document, not in the deck.
+
 ## Pricing discipline
 
 - Never state a firm price the captured scope can't justify. An honest range beats a
