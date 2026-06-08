@@ -50,19 +50,27 @@ function logoMark(heightPx: number): string {
 }
 
 /** Shared header bar used on non-cover slides. */
-function head(dark: boolean): string {
+function head(dark: boolean, chapter: string): string {
   const headClass = dark ? 'head' : 'head head-light';
   return (
     `<div class="${headClass}">` +
     `<div class="mark">${logoMark(32)}<span>Network Intelligence</span></div>` +
+    `<div class="chapter">${esc(chapter)}</div>` +
     `</div>`
   );
 }
 
-/** Shared footer used on non-cover slides (chapter injected via data-screen-label). */
-function foot(dark: boolean, label: string): string {
+/** Shared footer used on non-cover slides. n = 1-based slide index, total = kept slide count. */
+function foot(dark: boolean, label: string, n: number, total: number): string {
   const footClass = dark ? 'foot' : 'foot foot-light';
-  return `<div class="${footClass}"><span>NI · ${esc(label)}</span></div>`;
+  const nn = String(n).padStart(2, '0');
+  const tt = String(total).padStart(2, '0');
+  return (
+    `<div class="${footClass}">` +
+    `<span>NI · ${esc(label)}</span>` +
+    `<span>${nn}<span class="dot"></span>${tt}</span>` +
+    `</div>`
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -85,10 +93,31 @@ function statValue(v: string): string {
 }
 
 // ─────────────────────────────────────────────
+// Slide descriptor returned by each builder
+// ─────────────────────────────────────────────
+
+interface SlideDesc {
+  /** The outer section element as a complete string (for special/full-bleed slides). */
+  full?: string;
+  /** Inner body HTML (without head/foot) — used for standard slides. */
+  inner?: string;
+  /** CSS variant class on the section, e.g. "slide-light", "bg-crimson-wash". */
+  variant?: string;
+  /** Whether the slide uses dark styling for head/foot. */
+  dark?: boolean;
+  /** Chapter label rendered in the header right side. */
+  chapter?: string;
+  /** Left-hand label in the footer "NI · <label>". */
+  footLabel?: string;
+  /** Additional inline style for the section element. */
+  sectionStyle?: string;
+}
+
+// ─────────────────────────────────────────────
 // Slide builders
 // ─────────────────────────────────────────────
 
-function buildCover(content: ProposalContent): string {
+function buildCover(content: ProposalContent): SlideDesc {
   const serviceLabels = content.serviceLines.map((k) => serviceLineLabel(k)).join(' · ');
   const statsHtml = COVER_STATS.map((s) => `
       <div>
@@ -96,7 +125,8 @@ function buildCover(content: ProposalContent): string {
         <p style="font-family:var(--font-display);font-size:13px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin:14px 0 0;">${esc(s.label)}</p>
       </div>`).join('');
 
-  return `<section class="slide slide-full" data-screen-label="01 Cover" style="padding:0;">
+  return {
+    full: `<section class="slide slide-full" data-screen-label="01 Cover" style="padding:0;">
     <div style="position:absolute;inset:0;background:#0A0A0B;"></div>
     <div style="position:absolute;right:-340px;top:-180px;width:1500px;height:1500px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#B61A3F 0%,#A01855 25%,#731E7A 55%,#582A90 80%,transparent 100%);opacity:0.85;"></div>
     <div style="position:absolute;right:-120px;top:80px;width:980px;height:980px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(255,234,77,0.18) 0%,transparent 50%);"></div>
@@ -130,10 +160,11 @@ function buildCover(content: ProposalContent): string {
     <div style="position:absolute;left:120px;bottom:32px;z-index:3;font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:0.18em;">
       NI / ${esc(content.company)} / v1.0
     </div>
-  </section>`;
+  </section>`,
+  };
 }
 
-function buildExecSummary(content: ProposalContent): string | null {
+function buildExecSummary(content: ProposalContent): SlideDesc | null {
   if (!content.pillars.length) return null;
 
   const pillarsHtml = content.pillars.slice(0, 3).map((p, i) => `
@@ -145,25 +176,27 @@ function buildExecSummary(content: ProposalContent): string | null {
         <p class="pillar-body">${esc(p.body)}</p>
       </div>`).join('');
 
-  return `<section class="slide slide-light" data-screen-label="02 Executive summary">
-    ${head(false)}
+  return {
+    variant: 'slide-light',
+    dark: false,
+    chapter: '01 · Executive summary',
+    footLabel: `${content.company} Proposal`,
+    inner: `
     <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:linear-gradient(180deg,#582A90 0%,#A01855 50%,#B61A3F 100%);"></div>
 
     <div style="margin-top:48px;max-width:1500px;">
       <p class="eyebrow eyebrow-violet">Why Network Intelligence for ${esc(content.company)}</p>
       <div class="gradient-band" style="width:160px;margin:24px 0 28px;"></div>
-      <h2 class="title title-md" style="font-size:62px;font-weight:500;">${esc(content.pillars[0]!.title)}</h2>
+      <h2 class="title title-md" style="font-size:62px;font-weight:500;">A proposal built around your requirement.</h2>
     </div>
 
     <div style="margin-top:48px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
       ${pillarsHtml}
-    </div>
-
-    ${foot(false, `${content.company} Proposal`)}
-  </section>`;
+    </div>`,
+  };
 }
 
-function buildUnderstanding(content: ProposalContent): string | null {
+function buildUnderstanding(content: ProposalContent): SlideDesc | null {
   const hasStats = content.understandingStats.length > 0;
   const hasSignals = content.signals.length > 0;
   if (!hasStats && !hasSignals) return null;
@@ -193,9 +226,12 @@ function buildUnderstanding(content: ProposalContent): string | null {
       </div>`
     : '';
 
-  return `<section class="slide bg-crimson-wash" data-screen-label="03 Understanding">
-    ${head(true)}
-
+  return {
+    variant: 'bg-crimson-wash',
+    dark: true,
+    chapter: '02 · Understanding your environment',
+    footLabel: `${content.company} Proposal`,
+    inner: `
     <div style="margin-top:40px;max-width:1500px;">
       <p class="eyebrow">The application we are assessing</p>
       <div class="gradient-band" style="width:160px;margin:22px 0 26px;"></div>
@@ -203,13 +239,11 @@ function buildUnderstanding(content: ProposalContent): string | null {
     </div>
 
     ${statsHtml}
-    ${signalsHtml}
-
-    ${foot(true, `${content.company} Proposal`)}
-  </section>`;
+    ${signalsHtml}`,
+  };
 }
 
-function buildScope(content: ProposalContent): string | null {
+function buildScope(content: ProposalContent): SlideDesc | null {
   if (!content.scopeRows.length) return null;
 
   const rowsHtml = content.scopeRows.map((r) =>
@@ -219,8 +253,12 @@ function buildScope(content: ProposalContent): string | null {
     </div>`,
   ).join('');
 
-  return `<section class="slide slide-light" data-screen-label="04 Scope">
-    ${head(false)}
+  return {
+    variant: 'slide-light',
+    dark: false,
+    chapter: '03 · Scope of work',
+    footLabel: `${content.company} Proposal`,
+    inner: `
     <div style="margin-top:44px;max-width:1500px;">
       <p class="eyebrow eyebrow-violet">In scope</p>
       <div class="gradient-band" style="width:160px;margin:22px 0 26px;"></div>
@@ -229,13 +267,11 @@ function buildScope(content: ProposalContent): string | null {
 
     <div style="margin-top:40px;display:flex;flex-direction:column;gap:0;max-width:1680px;border-top:1px solid rgba(10,10,11,0.12);">
       ${rowsHtml}
-    </div>
-
-    ${foot(false, `${content.company} Proposal`)}
-  </section>`;
+    </div>`,
+  };
 }
 
-function buildApproach(content: ProposalContent): string | null {
+function buildApproach(content: ProposalContent): SlideDesc | null {
   if (!content.approachPhases.length) return null;
 
   const tilesHtml = content.approachPhases.map((p, i) => {
@@ -249,8 +285,12 @@ function buildApproach(content: ProposalContent): string | null {
     </div>`;
   }).join('');
 
-  return `<section class="slide bg-gradient-violet" data-screen-label="05 Approach">
-    ${head(true)}
+  return {
+    variant: 'bg-gradient-violet',
+    dark: true,
+    chapter: '04 · Approach &amp; methodology',
+    footLabel: `${content.company} Proposal`,
+    inner: `
     <div style="margin-top:40px;max-width:1500px;">
       <p class="eyebrow">How we work</p>
       <div class="gradient-band" style="width:160px;margin:22px 0 26px;"></div>
@@ -259,13 +299,11 @@ function buildApproach(content: ProposalContent): string | null {
 
     <div style="margin-top:48px;display:grid;grid-template-columns:repeat(${Math.min(content.approachPhases.length, 4)},1fr);gap:18px;">
       ${tilesHtml}
-    </div>
-
-    ${foot(true, `${content.company} Proposal`)}
-  </section>`;
+    </div>`,
+  };
 }
 
-function buildDeliverables(content: ProposalContent): string | null {
+function buildDeliverables(content: ProposalContent): SlideDesc | null {
   if (!content.deliverables.length && !content.timeline) return null;
 
   const deliverablesHtml = content.deliverables.map((d) =>
@@ -285,8 +323,12 @@ function buildDeliverables(content: ProposalContent): string | null {
       </div>`
     : '';
 
-  return `<section class="slide slide-light" data-screen-label="06 Deliverables">
-    ${head(false)}
+  return {
+    variant: 'slide-light',
+    dark: false,
+    chapter: '05 · Deliverables &amp; timeline',
+    footLabel: `${content.company} Proposal`,
+    inner: `
     <div style="margin-top:44px;max-width:1500px;">
       <p class="eyebrow eyebrow-violet">What you get</p>
       <div class="gradient-band" style="width:160px;margin:22px 0 26px;"></div>
@@ -297,21 +339,24 @@ function buildDeliverables(content: ProposalContent): string | null {
       ${deliverablesHtml}
     </div>
 
-    ${timelineHtml}
-
-    ${foot(false, `${content.company} Proposal`)}
-  </section>`;
+    ${timelineHtml}`,
+  };
 }
 
-function buildCredentials(content: ProposalContent): string | null {
+function buildCredentials(content: ProposalContent): SlideDesc | null {
   if (!content.credentials.length) return null;
 
   const chipsHtml = content.credentials.map((c) =>
     `<span class="chip"><span class="dot"></span>${esc(c)}</span>`,
   ).join('');
 
-  return `<section class="slide" data-screen-label="07 Credentials" style="background:#0A0A0B;">
-    ${head(true)}
+  return {
+    variant: '',
+    dark: true,
+    chapter: '06 · Credentials',
+    footLabel: `${content.company} Proposal`,
+    sectionStyle: 'background:#0A0A0B;',
+    inner: `
     <div style="margin-top:44px;max-width:1500px;">
       <p class="eyebrow">Why us — proven, independently audited</p>
       <div class="gradient-band" style="width:160px;margin:22px 0 26px;"></div>
@@ -324,13 +369,11 @@ function buildCredentials(content: ProposalContent): string | null {
 
     <p style="margin-top:48px;font-family:var(--font-display);font-size:26px;font-weight:300;color:rgba(255,255,255,0.8);max-width:1200px;line-height:1.4;">
       Every accreditation is independently audited and renewed annually. Not a checkbox — an operating standard.
-    </p>
-
-    ${foot(true, `${content.company} Proposal`)}
-  </section>`;
+    </p>`,
+  };
 }
 
-function buildWhyNi(content: ProposalContent): string | null {
+function buildWhyNi(content: ProposalContent): SlideDesc | null {
   if (!content.whyNi.length) return null;
 
   const tilesHtml = content.whyNi.slice(0, 3).map((item, i) => {
@@ -342,8 +385,12 @@ function buildWhyNi(content: ProposalContent): string | null {
     </div>`;
   }).join('');
 
-  return `<section class="slide bg-gradient-violet" data-screen-label="08 Why NI">
-    ${head(true)}
+  return {
+    variant: 'bg-gradient-violet',
+    dark: true,
+    chapter: '07 · Why Network Intelligence',
+    footLabel: `${content.company} Proposal`,
+    inner: `
     <div style="margin-top:40px;max-width:1500px;">
       <p class="eyebrow">The fit</p>
       <div class="gradient-band" style="width:160px;margin:22px 0 26px;"></div>
@@ -352,15 +399,17 @@ function buildWhyNi(content: ProposalContent): string | null {
 
     <div style="margin-top:48px;display:grid;grid-template-columns:repeat(${Math.min(content.whyNi.length, 3)},1fr);gap:20px;">
       ${tilesHtml}
-    </div>
-
-    ${foot(true, `${content.company} Proposal`)}
-  </section>`;
+    </div>`,
+  };
 }
 
-function buildCommercials(content: ProposalContent): string {
-  return `<section class="slide slide-light" data-screen-label="09 Commercials">
-    ${head(false)}
+function buildCommercials(content: ProposalContent): SlideDesc {
+  return {
+    variant: 'slide-light',
+    dark: false,
+    chapter: '08 · Commercials',
+    footLabel: `${content.company} Proposal`,
+    inner: `
     <div style="margin-top:44px;max-width:1500px;">
       <p class="eyebrow eyebrow-violet">Commercials</p>
       <div class="gradient-band" style="width:160px;margin:22px 0 26px;"></div>
@@ -372,12 +421,11 @@ function buildCommercials(content: ProposalContent): string {
     <div style="margin-top:36px;display:inline-flex;align-items:center;gap:14px;background:#fff;border:1px solid rgba(10,10,11,0.1);border-radius:12px;padding:18px 26px;">
       <i data-lucide="info" style="color:#582A90;width:22px;height:22px;stroke-width:1.5;"></i>
       <span style="font-family:var(--font-body);font-size:17px;color:#3a3a40;">Pricing follows scope confirmation — no surprises, no per-finding charges.</span>
-    </div>
-    ${foot(false, `${content.company} Proposal`)}
-  </section>`;
+    </div>`,
+  };
 }
 
-function buildNextSteps(content: ProposalContent): string {
+function buildNextSteps(content: ProposalContent): SlideDesc {
   const steps = content.ctaSteps.length
     ? content.ctaSteps
     : [{ when: 'This week', title: "Let's talk", detail: `Contact us at sales@networkintelligence.ai` }];
@@ -391,12 +439,23 @@ function buildNextSteps(content: ProposalContent): string {
       <p>${esc(s.detail)}</p>
     </div>`).join('');
 
-  return `<section class="slide slide-full" data-screen-label="10 Next steps" style="padding:0;">
+  // Full-bleed slide: pre-built including its own head (dark, chapter) but no standard foot.
+  // The assembler wraps it via the `full` path, passing the section string as-is after
+  // injecting the numbered head/foot at render time. Since the Next Steps slide uses a
+  // custom layout (centered content, logo mark, etc.) we embed it as a pre-built `full`
+  // section with placeholders handled by the assembler's numbering injection.
+  // We use a special `fullBuilder` approach: return inner + variant so the assembler can
+  // inject numbered head. There is no standard footer on this slide (design choice).
+  return {
+    variant: 'slide-full',
+    dark: true,
+    chapter: '09 · Next steps',
+    footLabel: `${content.company} Proposal`,
+    sectionStyle: 'padding:0;',
+    inner: `
     <div style="position:absolute;inset:0;background:#0A0A0B;"></div>
     <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1200px;height:1200px;border-radius:50%;background:radial-gradient(circle,rgba(88,42,144,0.35) 0%,rgba(182,26,63,0.18) 40%,transparent 70%);"></div>
     <div class="bg-grid" style="position:absolute;inset:0;opacity:0.5;"></div>
-
-    ${head(true)}
 
     <div style="position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;padding:120px;">
       ${logoMark(80)}
@@ -428,8 +487,8 @@ function buildNextSteps(content: ProposalContent): string {
       <p style="margin-top:28px;font-family:var(--font-display);font-size:13px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.45);">
         Network Intelligence · The Digital Security Company
       </p>
-    </div>
-  </section>`;
+    </div>`,
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -437,7 +496,7 @@ function buildNextSteps(content: ProposalContent): string {
 // ─────────────────────────────────────────────
 
 export function renderProposalHtml(content: ProposalContent): string {
-  const slides: (string | null)[] = [
+  const descs: (SlideDesc | null)[] = [
     buildCover(content),
     buildExecSummary(content),
     buildUnderstanding(content),
@@ -450,7 +509,33 @@ export function renderProposalHtml(content: ProposalContent): string {
     buildNextSteps(content),
   ];
 
-  const deck = slides.filter((s): s is string => s !== null).join('');
+  // Filter nulls first so we can compute total for dynamic slide numbering.
+  const kept = descs.filter((d): d is SlideDesc => d !== null);
+  const total = kept.length;
+
+  const deck = kept.map((d, i) => {
+    const n = i + 1;
+
+    // Full-bleed slides with pre-built HTML (cover): emitted as-is.
+    if (d.full !== undefined) {
+      return d.full;
+    }
+
+    // Standard slides: assembler wraps inner with head + foot.
+    const variantClass = d.variant ? `slide ${d.variant}` : 'slide';
+    const styleAttr = d.sectionStyle ? ` style="${d.sectionStyle}"` : '';
+    const chapterLabel = d.chapter ?? '';
+    const footLabel = d.footLabel ?? '';
+    const dark = d.dark ?? false;
+
+    return (
+      `<section class="${variantClass}"${styleAttr}>` +
+      head(dark, chapterLabel) +
+      (d.inner ?? '') +
+      foot(dark, footLabel, n, total) +
+      `</section>`
+    );
+  }).join('');
 
   return (
     `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">${STYLE}</head>` +

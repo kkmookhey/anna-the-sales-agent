@@ -48,4 +48,9 @@ describe('renderProposalHtml v3', () => {
     const html = renderProposalHtml({ ...content, titleLine: 'A <script> & "x"' });
     expect(html).toContain('A &lt;script&gt; &amp; &quot;x&quot;');
   });
+  it('renders header chapter labels and dynamic slide numbers', () => {
+    const html = renderProposalHtml(content);
+    expect(html).toContain('class="chapter"');
+    expect(html).toMatch(/<span class="dot"><\/span>/); // foot counter dot present
+  });
 });
