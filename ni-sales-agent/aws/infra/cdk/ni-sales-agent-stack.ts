@@ -38,8 +38,8 @@ export class NiSalesAgentStack extends Stack {
       entry: 'src/render/handler.ts',
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_20_X,
-      timeout: Duration.seconds(120),
-      memorySize: 2048,
+      timeout: Duration.seconds(180),
+      memorySize: 3008,
       ephemeralStorageSize: Size.mebibytes(1024),
       bundling: {
         format: nodejs.OutputFormat.ESM,
