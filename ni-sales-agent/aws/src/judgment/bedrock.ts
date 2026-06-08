@@ -25,13 +25,13 @@ export class BedrockJudge {
     return new BedrockJudge(new BedrockRuntimeClient({ region }), modelId);
   }
 
-  async askJson<T>(system: string, userContext: string): Promise<T> {
+  async askJson<T>(system: string, userContext: string, maxTokens = 2000): Promise<T> {
     const res = await this.client.send(
       new ConverseCommand({
         modelId: this.modelId,
         system: [{ text: system }],
         messages: [{ role: 'user', content: [{ text: userContext }] }],
-        inferenceConfig: { maxTokens: 2000, temperature: 0.2 },
+        inferenceConfig: { maxTokens, temperature: 0.2 },
       }),
     );
     const text = res.output?.message?.content?.[0]?.text ?? '';

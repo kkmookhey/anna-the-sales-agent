@@ -32,5 +32,9 @@ describe('buildProposalContent grounding', () => {
     expect(system).toMatch(/approachPhases/);
     expect(system).toMatch(/ctaSteps/);
     expect(out.pillars).toEqual([{ title: 'CERT-In', body: 'mandatory' }]);
+
+    // buildProposalContent must request a generous token budget (≥8000) so the large
+    // structured JSON is never truncated — this is the production bug being fixed.
+    expect(askJson.mock.calls[0][2]).toBeGreaterThanOrEqual(8000);
   });
 });

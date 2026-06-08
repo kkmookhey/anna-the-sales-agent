@@ -161,6 +161,7 @@ export class JudgmentService {
     const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines'>>(
       system,
       JSON.stringify(input),
+      8000,
     );
     return {
       company: input.company,
