@@ -8,6 +8,12 @@ export interface Commercials {
   text: string;
 }
 
+export interface StatHighlight { value: string; label: string }
+export interface Pillar { title: string; body: string }
+export interface Signal { title: string; detail: string }
+export interface ApproachPhase { name: string; detail: string }
+export interface CtaStep { when: string; title: string; detail: string }
+
 export interface ProposalContent {
   company: string;
   contactName: string;
@@ -24,4 +30,9 @@ export interface ProposalContent {
   transilienceEdge: string[];
   commercials: Commercials;
   nextSteps: string[];
+  understandingStats: StatHighlight[];
+  pillars: Pillar[];
+  signals: Signal[];
+  approachPhases: ApproachPhase[];
+  ctaSteps: CtaStep[];
 }

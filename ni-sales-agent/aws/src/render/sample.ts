@@ -21,6 +21,7 @@ const content: ProposalContent = {
   transilienceEdge: ['Continuous, AI-managed pen testing', 'Findings prioritised by exploitability'],
   commercials: { mode: 'placeholder', text: 'Indicative pricing to be confirmed after a short scoping call.' },
   nextSteps: ['Sign NDA', 'Share builds + credentials', 'Kick-off call'],
+  understandingStats: [], pillars: [], signals: [], approachPhases: [], ctaSteps: [],
 };
 
 async function main(): Promise<void> {
