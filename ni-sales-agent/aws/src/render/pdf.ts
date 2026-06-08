@@ -15,10 +15,15 @@ async function launchOptions(): Promise<{ args: string[]; executablePath: string
 
 export async function htmlToPdf(html: string): Promise<Buffer> {
   const opts = await launchOptions();
-  const browser = await puppeteer.launch({ ...opts, defaultViewport: { width: 1280, height: 720 } });
+  const browser = await puppeteer.launch({ ...opts, defaultViewport: { width: 1920, height: 1080 } });
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.evaluate(() =>
+      (globalThis as unknown as { customElements: { whenDefined(n: string): Promise<unknown> } }).customElements.whenDefined('deck-stage'),
+    );
+    await page.evaluate(() => new Promise<void>((r) => setTimeout(r, 800)));
+    await page.emulateMediaType('print');
     const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
     return Buffer.from(pdf);
   } finally {
