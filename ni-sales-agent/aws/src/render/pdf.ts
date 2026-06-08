@@ -19,10 +19,15 @@ export async function htmlToPdf(html: string): Promise<Buffer> {
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
-    await page.evaluate(() =>
-      (globalThis as unknown as { customElements: { whenDefined(n: string): Promise<unknown> } }).customElements.whenDefined('deck-stage'),
-    );
-    await page.evaluate(() => new Promise<void>((r) => setTimeout(r, 800)));
+    await page.evaluate(async () => {
+      const g = globalThis as unknown as { customElements: { whenDefined(n: string): Promise<unknown> }; document: { getElementById(id: string): unknown } };
+      await Promise.race([g.customElements.whenDefined('deck-stage'), new Promise((r) => setTimeout(r, 8000))]);
+      const deadline = Date.now() + 8000;
+      while (!g.document.getElementById('deck-stage-print-page') && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    });
     await page.emulateMediaType('print');
     const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
     return Buffer.from(pdf);

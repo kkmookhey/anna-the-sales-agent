@@ -8,13 +8,15 @@ import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
 import type { ProposalContent } from '../proposal/types.js';
 
+const escHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 export interface GraphPort {
   listInbound(sinceIso: string): Promise<InboundMessage[]>;
   createDraftReply(messageId: string, bodyHtml: string): Promise<string>;
   createDraftToExternal(messageId: string, bodyHtml: string, toAddress: string): Promise<string>;
   wasReplySent(conversationId: string, afterIso: string): Promise<boolean>;
   latestInboundInConversation(conversationId: string, afterIso: string): Promise<InboundMessage | null>;
-  addAttachment(messageId: string, name: string, content: Buffer): Promise<void>;
+  addAttachment(messageId: string, name: string, content: Buffer, contentType?: string): Promise<void>;
 }
 export interface InboundMessage {
   id: string; conversationId: string; subject: string; fromName: string; fromAddress: string;
@@ -377,13 +379,13 @@ async function stageProposal(
   const pdfName = `${slug}-proposal-v${version}.pdf`;
   const docxName = `${slug}-commercials-v${version}.docx`;
   const deckUri = await s3.put(`proposals/${pdfName}`, pdf);
-  await s3.put(`proposals/${docxName}`, docx, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  const docxUri = await s3.put(`proposals/${docxName}`, docx, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   deal.proposal = { deck_path: deckUri, version, staged_at: nowIso };
 
   const firstName = deal.contact_name.split(' ')[0] ?? deal.contact_name;
   const coverHtml =
-    `<p>Hi ${firstName},</p>` +
-    `<p>Please find attached our proposal for ${deal.service_lines.join(', ')}. ` +
+    `<p>Hi ${escHtml(firstName)},</p>` +
+    `<p>Please find attached our proposal for ${deal.service_lines.map(escHtml).join(', ')}. ` +
     `It lists the assumptions we made so you can correct anything that's off. ` +
     `The deck contains the engagement overview and the commercials document contains pricing. ` +
     `Happy to walk through it on a short call.</p>` +
@@ -392,8 +394,8 @@ async function stageProposal(
   let draftRef = `(dry-run — no draft; deck stored at ${deckUri})`;
   if (!config.dryRun) {
     const draftId = await graph.createDraftReply(latest?.id ?? deal.last_inbound_id, coverHtml);
-    await graph.addAttachment(draftId, pdfName, pdf);
-    await graph.addAttachment(draftId, docxName, docx);
+    await graph.addAttachment(draftId, pdfName, pdf, 'application/pdf');
+    await graph.addAttachment(draftId, docxName, docx, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     draftRef = `Outlook draft ${draftId} (deck + commercials attached)`;
   }
 
@@ -413,7 +415,7 @@ async function stageProposal(
     `*[STAGING — proposal]* ${deal.company} / ${deal.contact_name}\n` +
     `Deal: \`${deal.deal_id}\`  Stage: ${from} → PROPOSAL_PENDING_APPROVAL\n` +
     `Deck: ${deckUri} (v${version})\n` +
-    `Commercials: s3://.../${docxName} (v${version})\n` +
+    `Commercials: ${docxUri} (v${version})\n` +
     `Outlook draft: ${draftRef}\n` +
     `Approve by: sending the draft${priceFlag}\n` +
     `Assumptions: ${deal.assumptions.join('; ') || 'none'}`;

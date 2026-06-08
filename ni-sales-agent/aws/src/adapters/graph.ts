@@ -150,13 +150,14 @@ export class GraphClient {
     return toInbound(newest);
   }
 
-  async addAttachment(messageId: string, name: string, content: Buffer): Promise<void> {
+  async addAttachment(messageId: string, name: string, content: Buffer, contentType?: string): Promise<void> {
     await this.call(`/users/${this.box()}/messages/${encodeURIComponent(messageId)}/attachments`, {
       method: 'POST',
       body: JSON.stringify({
         '@odata.type': '#microsoft.graph.fileAttachment',
         name,
         contentBytes: content.toString('base64'),
+        ...(contentType ? { contentType } : {}),
       }),
     });
   }

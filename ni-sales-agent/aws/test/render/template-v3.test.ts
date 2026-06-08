@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderProposalHtml, esc } from '../../src/render/template.js';
+import { renderProposalHtml } from '../../src/render/template.js';
 import type { ProposalContent } from '../../src/proposal/types.js';
 
 const content: ProposalContent = {
