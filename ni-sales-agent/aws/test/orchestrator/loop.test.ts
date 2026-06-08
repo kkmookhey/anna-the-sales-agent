@@ -47,7 +47,7 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
       putMeta: vi.fn(async () => {}),
     },
     s3: { put: vi.fn().mockResolvedValue('s3://ni-decks/proposals/novelty-wealth-v1.pdf') },
-    deck: { render: vi.fn().mockResolvedValue(Buffer.from('PK deck')) },
+    deck: { render: vi.fn().mockResolvedValue({ pdf: Buffer.from('%PDF- deck'), docx: Buffer.from('PK docx') }) },
     ...overrides,
   } as LoopDeps;
 }
@@ -181,9 +181,23 @@ describe('runLoop — SCOPE_REVIEW proposal slice', () => {
 
     expect(deps.judge.buildProposalContent).toHaveBeenCalledOnce();
     expect(deps.deck.render).toHaveBeenCalledOnce();
-    expect(deps.s3.put).toHaveBeenCalledOnce();
+    expect(deps.s3.put).toHaveBeenCalledTimes(2);
+
+    const s3Calls = (deps.s3.put as ReturnType<typeof vi.fn>).mock.calls;
+    expect(s3Calls[0][0]).toMatch(/proposals\/novelty-wealth-proposal-v1\.pdf$/);
+    expect(s3Calls[0][1]).toEqual(Buffer.from('%PDF- deck'));
+    expect(s3Calls[1][0]).toMatch(/proposals\/novelty-wealth-commercials-v1\.docx$/);
+    expect(s3Calls[1][1]).toEqual(Buffer.from('PK docx'));
+    expect(s3Calls[1][2]).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+
     expect(deps.graph.createDraftReply).toHaveBeenCalledOnce();
-    expect(deps.graph.addAttachment).toHaveBeenCalledOnce();
+    expect(deps.graph.addAttachment).toHaveBeenCalledTimes(2);
+
+    const attachCalls = (deps.graph.addAttachment as ReturnType<typeof vi.fn>).mock.calls;
+    expect(attachCalls[0][1]).toMatch(/\.pdf$/);
+    expect(attachCalls[0][2]).toEqual(Buffer.from('%PDF- deck'));
+    expect(attachCalls[1][1]).toMatch(/\.docx$/);
+    expect(attachCalls[1][2]).toEqual(Buffer.from('PK docx'));
 
     const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
     expect(stored.stage).toBe('PROPOSAL_PENDING_APPROVAL');

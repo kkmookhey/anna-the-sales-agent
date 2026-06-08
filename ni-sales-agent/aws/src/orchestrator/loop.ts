@@ -44,7 +44,7 @@ export interface RepoPort {
   putMeta(key: string, value: string): Promise<void>;
 }
 export interface S3Port {
-  put(key: string, body: Buffer): Promise<string>;
+  put(key: string, body: Buffer, contentType?: string): Promise<string>;
 }
 export interface DeckPort {
   render(content: ProposalContent): Promise<{ pdf: Buffer; docx: Buffer }>;
@@ -372,10 +372,12 @@ async function stageProposal(
   });
 
   const version = (deal.proposal?.version ?? 0) + 1;
-  const buf = await deck.render(content);
+  const { pdf, docx } = await deck.render(content);
   const slug = deal.company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  const fileName = `${slug}-proposal-v${version}.pdf`;
-  const deckUri = await s3.put(`proposals/${fileName}`, buf);
+  const pdfName = `${slug}-proposal-v${version}.pdf`;
+  const docxName = `${slug}-commercials-v${version}.docx`;
+  const deckUri = await s3.put(`proposals/${pdfName}`, pdf);
+  await s3.put(`proposals/${docxName}`, docx, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   deal.proposal = { deck_path: deckUri, version, staged_at: nowIso };
 
   const firstName = deal.contact_name.split(' ')[0] ?? deal.contact_name;
@@ -383,14 +385,16 @@ async function stageProposal(
     `<p>Hi ${firstName},</p>` +
     `<p>Please find attached our proposal for ${deal.service_lines.join(', ')}. ` +
     `It lists the assumptions we made so you can correct anything that's off. ` +
+    `The deck contains the engagement overview and the commercials document contains pricing. ` +
     `Happy to walk through it on a short call.</p>` +
     `<p>Best regards,<br/>Network Intelligence — Sales</p>`;
 
   let draftRef = `(dry-run — no draft; deck stored at ${deckUri})`;
   if (!config.dryRun) {
     const draftId = await graph.createDraftReply(latest?.id ?? deal.last_inbound_id, coverHtml);
-    await graph.addAttachment(draftId, fileName, buf);
-    draftRef = `Outlook draft ${draftId} (deck attached)`;
+    await graph.addAttachment(draftId, pdfName, pdf);
+    await graph.addAttachment(draftId, docxName, docx);
+    draftRef = `Outlook draft ${draftId} (deck + commercials attached)`;
   }
 
   const from = deal.stage;
@@ -409,6 +413,7 @@ async function stageProposal(
     `*[STAGING — proposal]* ${deal.company} / ${deal.contact_name}\n` +
     `Deal: \`${deal.deal_id}\`  Stage: ${from} → PROPOSAL_PENDING_APPROVAL\n` +
     `Deck: ${deckUri} (v${version})\n` +
+    `Commercials: s3://.../${docxName} (v${version})\n` +
     `Outlook draft: ${draftRef}\n` +
     `Approve by: sending the draft${priceFlag}\n` +
     `Assumptions: ${deal.assumptions.join('; ') || 'none'}`;
