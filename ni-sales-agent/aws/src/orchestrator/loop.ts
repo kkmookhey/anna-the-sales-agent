@@ -47,7 +47,7 @@ export interface S3Port {
   put(key: string, body: Buffer): Promise<string>;
 }
 export interface DeckPort {
-  render(content: ProposalContent): Promise<Buffer>;
+  render(content: ProposalContent): Promise<{ pdf: Buffer; docx: Buffer }>;
 }
 
 export interface LoopDeps {

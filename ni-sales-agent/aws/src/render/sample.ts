@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { renderProposalHtml } from './template.js';
 import { htmlToPdf } from './pdf.js';
+import { buildCommercialsDocx } from './commercials.js';
 import type { ProposalContent } from '../proposal/types.js';
 
 const content: ProposalContent = {
@@ -58,5 +59,7 @@ async function main(): Promise<void> {
   mkdirSync('out', { recursive: true });
   writeFileSync('out/sample-proposal.pdf', pdf);
   console.log(`Wrote out/sample-proposal.pdf (${pdf.length} bytes)`);
+  writeFileSync('out/sample-commercials.docx', await buildCommercialsDocx(content));
+  console.log('Wrote out/sample-commercials.docx');
 }
 main();
