@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-const PPTX_CT = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+const PDF_CT = 'application/pdf';
+export const DOCX_CT = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 export class DeckStore {
   constructor(
@@ -12,9 +13,9 @@ export class DeckStore {
     return new DeckStore(new S3Client({ region }), bucket);
   }
 
-  async put(key: string, body: Buffer): Promise<string> {
+  async put(key: string, body: Buffer, contentType: string = PDF_CT): Promise<string> {
     await this.s3.send(
-      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: PPTX_CT }),
+      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }),
     );
     return `s3://${this.bucket}/${key}`;
   }

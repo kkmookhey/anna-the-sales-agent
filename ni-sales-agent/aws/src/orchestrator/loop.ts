@@ -1,18 +1,23 @@
 import type { Config } from '../config.js';
-import type { Deal, Stage } from '../state/types.js';
+import type { Deal, Scope, Stage } from '../state/types.js';
 import { emptyScope } from '../state/types.js';
 import { decideTransition, resolveScopeReview, resolveProposalReply } from './transitions.js';
-import { scanForInjection, verifiedRecipient } from '../gates/gates.js';
+import { bareEmail, bodyDerivedRecipient, scanForInjection, verifiedRecipient } from '../gates/gates.js';
+import { isAutomatedSender } from './intake.js';
 import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
 import type { ProposalContent } from '../proposal/types.js';
 
+const escHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 export interface GraphPort {
   listInbound(sinceIso: string): Promise<InboundMessage[]>;
   createDraftReply(messageId: string, bodyHtml: string): Promise<string>;
+  createDraftToExternal(messageId: string, bodyHtml: string, toAddress: string): Promise<string>;
   wasReplySent(conversationId: string, afterIso: string): Promise<boolean>;
+  draftExistsInConversation(conversationId: string): Promise<boolean>;
   latestInboundInConversation(conversationId: string, afterIso: string): Promise<InboundMessage | null>;
-  addAttachment(messageId: string, name: string, content: Buffer): Promise<void>;
+  addAttachment(messageId: string, name: string, content: Buffer, contentType?: string): Promise<void>;
 }
 export interface InboundMessage {
   id: string; conversationId: string; subject: string; fromName: string; fromAddress: string;
@@ -27,9 +32,10 @@ export interface HubSpotPort {
   createDeal(props: { dealname: string; pipeline: string; dealstage: string; hubspot_owner_id: string; amount?: string }): Promise<string>;
 }
 export interface JudgePort {
-  scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string; company: string }>;
-  assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string }>;
+  scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string; company: string; scope: Partial<Scope> }>;
+  assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string; scope?: Partial<Scope> }>;
   draftFollowup(i: { company: string; contactName: string; followupNumber: number; scopeSummary: Record<string, unknown> }): Promise<{ draft_subject: string; draft_body_html: string }>;
+  classifyInbound(i: { fromName: string; fromAddress: string; subject: string; body: string }): Promise<{ category: 'enquiry' | 'forwarded_enquiry' | 'not_enquiry'; original_sender?: { name: string; email: string }; confidence: 'high' | 'low'; reason: string }>;
   classifyProposalReply(i: { subject: string; reply: string }): Promise<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }>;
   buildProposalContent(i: { company: string; contactName: string; serviceLines: string[]; scope: Record<string, unknown>; assumptions: string[] }): Promise<ProposalContent>;
 }
@@ -41,10 +47,10 @@ export interface RepoPort {
   putMeta(key: string, value: string): Promise<void>;
 }
 export interface S3Port {
-  put(key: string, body: Buffer): Promise<string>;
+  put(key: string, body: Buffer, contentType?: string): Promise<string>;
 }
 export interface DeckPort {
-  render(content: ProposalContent): Promise<Buffer>;
+  render(content: ProposalContent): Promise<{ pdf: Buffer; docx: Buffer }>;
 }
 
 export interface LoopDeps {
@@ -66,14 +72,7 @@ export interface RunSummary {
   advanced: number;
   disqualified: number;
   flagged: number;
-}
-
-const INTERNAL_DOMAIN = 'networkintelligence.ai';
-
-function isGenuineEnquiry(m: InboundMessage): boolean {
-  const internal = m.fromAddress.endsWith(`@${INTERNAL_DOMAIN}`);
-  const hasContent = htmlToText(m.bodyFull).trim().length > 20;
-  return !internal && hasContent;
+  errors: number;
 }
 
 function action(from: Stage, to: Stage, type: string, note: string, nowIso: string): Deal['actions'][number] {
@@ -83,7 +82,7 @@ function action(from: Stage, to: Stage, type: string, note: string, nowIso: stri
 export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const { config, now, graph, slack, repo } = deps;
   const nowIso = now.toISOString();
-  const summary: RunSummary = { processed: 0, staged: 0, advanced: 0, disqualified: 0, flagged: 0 };
+  const summary: RunSummary = { processed: 0, staged: 0, advanced: 0, disqualified: 0, flagged: 0, errors: 0 };
 
   if (config.businessHoursOnly && !withinBusinessHours(now)) {
     logger.info('skip_outside_business_hours', { now: nowIso });
@@ -96,23 +95,47 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const originatingContext = new Map<string, { subject: string; body: string }>();
   const stagingLines: string[] = [];
 
+  const reviewLines: string[] = [];
+
   for (const m of inbound) {
     summary.processed++;
-    const existing = byConversation.get(m.conversationId);
-    if (existing) continue;
-    if (!isGenuineEnquiry(m)) {
+    if (byConversation.get(m.conversationId)) continue;
+
+    if (isAutomatedSender(m.fromAddress)) {
       summary.disqualified++;
-      stagingLines.push(`*Disqualified:* "${m.subject}" from \`${m.fromAddress}\` — internal/no enquiry content.`);
+      stagingLines.push(`*Disqualified:* "${m.subject}" from \`${m.fromAddress}\` — automated sender.`);
       continue;
     }
-    const flags = scanForInjection(m.bodyPreview);
+
+    const body = htmlToText(m.bodyFull);
+    const verdict = await deps.judge.classifyInbound({
+      fromName: m.fromName, fromAddress: m.fromAddress, subject: m.subject, body,
+    });
+
+    if (verdict.category === 'not_enquiry') {
+      summary.disqualified++;
+      stagingLines.push(`*Disqualified:* "${m.subject}" from \`${m.fromAddress}\` — ${verdict.reason}.`);
+      continue;
+    }
+    if (verdict.confidence === 'low') {
+      reviewLines.push(`*Review (low-confidence):* "${m.subject}" from \`${m.fromAddress}\` — ${verdict.reason}. Not auto-drafted.`);
+      continue;
+    }
+
+    const flags = scanForInjection(body);
     if (flags.length) summary.flagged++;
+
+    const forwarded = verdict.category === 'forwarded_enquiry';
+    const prospect = forwarded ? verdict.original_sender : undefined;
+
     const fresh: Deal = {
       deal_id: m.conversationId,
       stage: 'NEW',
-      company: domainToCompany(m.fromAddress),
-      contact_name: m.fromName,
-      contact_email: verifiedRecipient(m.fromAddress, m.participants),
+      company: prospect?.email ? domainToCompany(prospect.email) : domainToCompany(m.fromAddress),
+      contact_name: prospect?.name ?? m.fromName,
+      contact_email: forwarded
+        ? (prospect?.email ?? '')
+        : verifiedRecipient(m.fromAddress, m.participants),
       service_lines: [],
       created_at: m.receivedDateTime,
       last_inbound_id: m.id,
@@ -124,17 +147,26 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       proposal: null,
       actions: [],
       flags: flags.map((reason) => ({ ts: nowIso, message_id: m.id, reason })),
+      intake: forwarded
+        ? { source: 'forwarded', forwarded_by: bareEmail(m.fromAddress), proposed_recipient: prospect?.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(prospect.email.trim()) ? prospect.email.trim() : undefined, recipient_verified: false }
+        : { source: 'direct', recipient_verified: true },
     };
     byConversation.set(fresh.deal_id, fresh);
-    originatingContext.set(fresh.deal_id, { subject: m.subject, body: htmlToText(m.bodyFull) });
+    originatingContext.set(fresh.deal_id, { subject: m.subject, body });
   }
 
   for (const deal of byConversation.values()) {
-    const line = await advanceDeal(deal, deps, nowIso, originatingContext.get(deal.deal_id) ?? null);
-    if (line) {
-      stagingLines.push(line.text);
-      if (line.staged) summary.staged++;
-      if (line.advanced) summary.advanced++;
+    try {
+      const line = await advanceDeal(deal, deps, nowIso, originatingContext.get(deal.deal_id) ?? null);
+      if (line) {
+        stagingLines.push(line.text);
+        if (line.staged) summary.staged++;
+        if (line.advanced) summary.advanced++;
+      }
+    } catch (err) {
+      summary.errors++;
+      logger.error('advance_deal_failed', { deal_id: deal.deal_id, error: err instanceof Error ? err.message : String(err) });
+      stagingLines.push(`:x: *Error advancing* ${deal.company} (\`${deal.deal_id}\`): ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -143,10 +175,15 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const canvasId = await slack.upsertCanvas(existingCanvasId, 'NI Sales — Pipeline', board);
   if (!existingCanvasId) await repo.putMeta('canvas_id', canvasId);
 
-  const header = `:robot_face: *NI Sales Agent — run summary*${config.dryRun ? ' (dry-run)' : ''}\n` +
-    `_${summary.processed} inbound · ${summary.staged} staged · ${summary.advanced} advanced · ` +
-    `${summary.disqualified} disqualified · ${summary.flagged} flagged_`;
-  await slack.postStaging(config.slackChannelId, [header, ...stagingLines].join('\n\n'));
+  logger.info('run_done', { ...summary });
+
+  const hasActivity = stagingLines.length > 0 || reviewLines.length > 0;
+  if (hasActivity) {
+    const header = `:robot_face: *NI Sales Agent — run summary*${config.dryRun ? ' (dry-run)' : ''}\n` +
+      `_${summary.processed} inbound · ${summary.staged} staged · ${summary.advanced} advanced · ` +
+      `${summary.disqualified} disqualified · ${summary.flagged} flagged · ${summary.errors} errors_`;
+    await slack.postStaging(config.slackChannelId, [header, ...stagingLines, ...reviewLines].join('\n\n'));
+  }
 
   return summary;
 }
@@ -182,6 +219,10 @@ async function advanceDeal(
       if (deal.stage === 'SCOPE_REVIEW' && latest) {
         const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: htmlToText(latest.bodyFull) });
         const branch = resolveScopeReview(verdict.sufficient);
+        if (verdict.scope) deal.scope = { ...deal.scope, ...verdict.scope };
+        // consume the reply we just ran sufficiency on (persisted by stageDraft/stageProposal)
+        deal.last_inbound_id = latest.id;
+        deal.last_inbound_at = latest.receivedDateTime;
         if (branch.kind === 'STAGE_CLARIFY') {
           return stageDraft(deal, branch.nextStage, verdict.clarifying_subject ?? `Re: ${latest.subject}`, verdict.clarifying_body_html ?? '', 'clarify_staged', deps, nowIso, latest);
         }
@@ -224,10 +265,6 @@ async function advanceDeal(
     case 'ADVANCE': {
       const from = deal.stage;
       deal.stage = t.nextStage;
-      if (newInbound && latest) {
-        deal.last_inbound_id = latest.id;
-        deal.last_inbound_at = latest.receivedDateTime;
-      }
       if (t.nextStage === 'PROPOSAL_SENT') deal.next_followup_date = addBusinessDays(deps.now, config.followupCadenceDays[Math.min(deal.followup_count, config.followupCadenceDays.length - 1)]!).toISOString();
       deal.actions.push(action(from, t.nextStage, 'advance', `signal-driven advance`, nowIso));
       await repo.putDeal(deal);
@@ -241,14 +278,15 @@ async function advanceDeal(
         bodyPreview: originating?.body ?? '',
       });
       deal.service_lines = scoped.service_lines;
-      deal.scope.service_lines = scoped.service_lines;
-      if (scoped.company?.trim()) deal.company = scoped.company.trim(); // prefer the real company over the email-domain guess
+      deal.scope = { ...deal.scope, ...scoped.scope, service_lines: scoped.service_lines };
+      // For direct enquiries prefer the LLM-extracted company over the email-domain guess.
+      // For forwarded enquiries the prospect's email domain is already set; don't override it.
+      if (scoped.company?.trim() && deal.intake.source !== 'forwarded') deal.company = scoped.company.trim();
       return stageDraft(deal, t.nextStage, scoped.draft_subject, scoped.draft_body_html, 'scoping_staged', deps, nowIso, null);
     }
 
     case 'STAGE_FOLLOWUP': {
       const f = await judge.draftFollowup({ company: deal.company, contactName: deal.contact_name, followupNumber: deal.followup_count + 1, scopeSummary: deal.scope as unknown as Record<string, unknown> });
-      deal.followup_count++;
       return stageDraft(deal, t.nextStage, f.draft_subject, f.draft_body_html, 'followup_staged', deps, nowIso, null);
     }
 
@@ -280,18 +318,38 @@ async function stageDraft(
   deps: LoopDeps,
   nowIso: string,
   latest: InboundMessage | null,
-): Promise<AdvanceResult> {
+): Promise<AdvanceResult | null> {
   const { config, graph, repo } = deps;
+  if (!config.dryRun && (await graph.draftExistsInConversation(deal.deal_id))) {
+    logger.info('skip_duplicate_draft', { deal_id: deal.deal_id, stage: deal.stage, action: actionType });
+    return null;
+  }
   const replyToMessageId = latest?.id ?? deal.last_inbound_id;
+  const fwd = deal.intake.source === 'forwarded';
+  const toProspect = fwd ? deal.intake.proposed_recipient : undefined;
 
   let draftRef = '(dry-run — text below)';
+  let recipientFlag = '';
   if (!config.dryRun) {
-    const draftId = await graph.createDraftReply(replyToMessageId, bodyHtml);
-    draftRef = `Outlook draft created (id ${draftId})`;
+    if (toProspect) {
+      const to = bodyDerivedRecipient(toProspect);
+      const draftId = await graph.createDraftToExternal(replyToMessageId, bodyHtml, to);
+      draftRef = `Outlook draft created (id ${draftId})`;
+      recipientFlag = `\n:warning: Recipient \`${to}\` was extracted from a FORWARDED body — verify before sending. Forwarded by \`${deal.intake.forwarded_by ?? 'unknown'}\`.`;
+    } else {
+      const draftId = await graph.createDraftReply(replyToMessageId, bodyHtml);
+      draftRef = `Outlook draft created (id ${draftId})`;
+      if (fwd) recipientFlag = `\n:warning: Couldn't determine the prospect's address from the forward — set the recipient manually before sending.`;
+    }
+  } else if (fwd) {
+    recipientFlag = toProspect
+      ? `\n:warning: (dry-run) Would draft to body-derived recipient \`${toProspect}\` — verify before sending.`
+      : `\n:warning: (dry-run) Forwarded enquiry with no extractable prospect address — set recipient manually.`;
   }
 
   const from = deal.stage;
   deal.stage = nextStage;
+  if (actionType === 'followup_staged') deal.followup_count++;
   deal.actions.push(action(from, nextStage, actionType, `staged: ${subject}`, nowIso));
   await repo.putDeal(deal);
 
@@ -299,7 +357,7 @@ async function stageDraft(
     `*[STAGING — ${actionType}]* ${deal.company} / ${deal.contact_name}\n` +
     `Deal: \`${deal.deal_id}\`  Stage: ${from} → ${nextStage}\n` +
     `Summary: ${subject}\n` +
-    `Outlook draft: ${draftRef}\n` +
+    `Outlook draft: ${draftRef}${recipientFlag}\n` +
     `Approve by: sending the draft${nextStage === 'PO_PENDING_APPROVAL' ? '  |  replying SHIP-IT for HubSpot writes' : ''}\n` +
     `Flags: ${deal.flags.length ? deal.flags.map((f) => f.reason).join(', ') : 'none'}\n\n` +
     `> *Subject:* ${subject}\n> ${htmlToText(bodyHtml).slice(0, 1500)}`;
@@ -313,8 +371,12 @@ async function stageProposal(
   nowIso: string,
   latest: InboundMessage | null,
   verdict: { assumptions: string[] },
-): Promise<AdvanceResult> {
+): Promise<AdvanceResult | null> {
   const { config, graph, repo, judge, deck, s3 } = deps;
+  if (!config.dryRun && (await graph.draftExistsInConversation(deal.deal_id))) {
+    logger.info('skip_duplicate_draft', { deal_id: deal.deal_id, stage: deal.stage, action: 'proposal' });
+    return null;
+  }
 
   deal.assumptions = verdict.assumptions;
   const content = await judge.buildProposalContent({
@@ -326,25 +388,29 @@ async function stageProposal(
   });
 
   const version = (deal.proposal?.version ?? 0) + 1;
-  const buf = await deck.render(content);
+  const { pdf, docx } = await deck.render(content);
   const slug = deal.company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  const fileName = `${slug}-proposal-v${version}.pptx`;
-  const deckUri = await s3.put(`proposals/${fileName}`, buf);
+  const pdfName = `${slug}-proposal-v${version}.pdf`;
+  const docxName = `${slug}-commercials-v${version}.docx`;
+  const deckUri = await s3.put(`proposals/${pdfName}`, pdf);
+  const docxUri = await s3.put(`proposals/${docxName}`, docx, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   deal.proposal = { deck_path: deckUri, version, staged_at: nowIso };
 
   const firstName = deal.contact_name.split(' ')[0] ?? deal.contact_name;
   const coverHtml =
-    `<p>Hi ${firstName},</p>` +
-    `<p>Please find attached our proposal for ${deal.service_lines.join(', ')}. ` +
+    `<p>Hi ${escHtml(firstName)},</p>` +
+    `<p>Please find attached our proposal for ${deal.service_lines.map(escHtml).join(', ')}. ` +
     `It lists the assumptions we made so you can correct anything that's off. ` +
+    `The deck contains the engagement overview and the commercials document contains pricing. ` +
     `Happy to walk through it on a short call.</p>` +
     `<p>Best regards,<br/>Network Intelligence — Sales</p>`;
 
   let draftRef = `(dry-run — no draft; deck stored at ${deckUri})`;
   if (!config.dryRun) {
     const draftId = await graph.createDraftReply(latest?.id ?? deal.last_inbound_id, coverHtml);
-    await graph.addAttachment(draftId, fileName, buf);
-    draftRef = `Outlook draft ${draftId} (deck attached)`;
+    await graph.addAttachment(draftId, pdfName, pdf, 'application/pdf');
+    await graph.addAttachment(draftId, docxName, docx, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    draftRef = `Outlook draft ${draftId} (deck + commercials attached)`;
   }
 
   const from = deal.stage;
@@ -363,6 +429,7 @@ async function stageProposal(
     `*[STAGING — proposal]* ${deal.company} / ${deal.contact_name}\n` +
     `Deal: \`${deal.deal_id}\`  Stage: ${from} → PROPOSAL_PENDING_APPROVAL\n` +
     `Deck: ${deckUri} (v${version})\n` +
+    `Commercials: ${docxUri} (v${version})\n` +
     `Outlook draft: ${draftRef}\n` +
     `Approve by: sending the draft${priceFlag}\n` +
     `Assumptions: ${deal.assumptions.join('; ') || 'none'}`;

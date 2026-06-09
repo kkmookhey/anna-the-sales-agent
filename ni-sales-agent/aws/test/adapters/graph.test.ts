@@ -81,6 +81,18 @@ describe('GraphClient', () => {
               toRecipients: [], ccRecipients: [],
               receivedDateTime: '2026-06-02T14:00:00Z', bodyPreview: 'mid', hasAttachments: false,
             },
+            {
+              id: 'our-draft', conversationId: 'conv-1', subject: 'Re: VAPT', isDraft: true,
+              from: { emailAddress: { address: 'sales@networkintelligence.ai' } },
+              toRecipients: [], ccRecipients: [],
+              receivedDateTime: '2026-06-02T20:00:00Z', bodyPreview: 'our draft', hasAttachments: false,
+            },
+            {
+              id: 'our-sent', conversationId: 'conv-1', subject: 'Re: VAPT',
+              from: { emailAddress: { address: 'sales@networkintelligence.ai' } },
+              toRecipients: [], ccRecipients: [],
+              receivedDateTime: '2026-06-02T19:00:00Z', bodyPreview: 'our sent', hasAttachments: false,
+            },
           ],
         },
       },
@@ -89,8 +101,10 @@ describe('GraphClient', () => {
     const g = new GraphClient(creds, 'sales@networkintelligence.ai');
     const latest = await g.latestInboundInConversation('conv-1', '2026-06-02T00:00:00Z');
 
+    // 'our-draft' (20:00) and 'our-sent' (19:00) are newer but excluded — returns the real inbound 'new'.
     expect(latest!.id).toBe('new');
     const url = fetchMock.mock.calls[1]![0] as string;
+    expect(url).toContain('/mailFolders/inbox/messages');
     expect(url).not.toContain('%24orderby');
   });
 
@@ -131,5 +145,57 @@ describe('GraphClient', () => {
     expect(body['@odata.type']).toBe('#microsoft.graph.fileAttachment');
     expect(body.name).toBe('proposal.pptx');
     expect(typeof body.contentBytes).toBe('string');
+  });
+
+  it('createDraftReply uses Reply-All and prepends our HTML above the quoted thread', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { id: 'draft-9', body: { contentType: 'HTML', content: '<div class="quote">--- original thread ---</div>' } } },
+      { json: {} },
+    ]);
+
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const id = await g.createDraftReply('m1', '<p>Our reply</p>');
+
+    expect(id).toBe('draft-9');
+    const createUrl = fetchMock.mock.calls[1]![0] as string;
+    expect(createUrl).toContain('/messages/m1/createReplyAll');
+    const patchBody = JSON.parse((fetchMock.mock.calls[2]![1] as RequestInit).body as string);
+    expect(patchBody.body.content).toBe('<p>Our reply</p><div class="quote">--- original thread ---</div>');
+  });
+
+  it('createDraftReply tolerates a draft response with no body content', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { id: 'draft-10' } },
+      { json: {} },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const id = await g.createDraftReply('m1', '<p>Our reply</p>');
+    expect(id).toBe('draft-10');
+    const patchBody = JSON.parse((fetchMock.mock.calls[2]![1] as RequestInit).body as string);
+    expect(patchBody.body.content).toBe('<p>Our reply</p>');
+  });
+
+  it('draftExistsInConversation queries the drafts folder, escapes quotes, and returns true when a draft exists', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { value: [{ id: 'existing-draft' }] } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const exists = await g.draftExistsInConversation("conv'1");
+    expect(exists).toBe(true);
+    const url = fetchMock.mock.calls[1]![0] as string;
+    expect(url).toContain('/mailFolders/drafts/messages');
+    expect(decodeURIComponent(url)).toContain("conversationId eq 'conv''1'");
+  });
+
+  it('draftExistsInConversation returns false when no draft exists', async () => {
+    mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { value: [] } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    expect(await g.draftExistsInConversation('conv-2')).toBe(false);
   });
 });

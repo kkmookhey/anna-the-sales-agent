@@ -31,13 +31,24 @@ export class SlackClient {
     return String(json.ts);
   }
 
+  private async callGet(method: string, params: Record<string, string>): Promise<Record<string, unknown>> {
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(`${SLACK}/${method}?${qs}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${this.botToken}` },
+    });
+    const json = (await res.json()) as Record<string, unknown>;
+    if (!json.ok) throw new Error(`Slack ${method} error: ${String(json.error)}`);
+    return json;
+  }
+
   async detectApproval(
     channelId: string,
     threadTs: string,
     token: string,
     approvedUserIds: string[],
   ): Promise<boolean> {
-    const json = await this.call('conversations.replies', { channel: channelId, ts: threadTs });
+    const json = await this.callGet('conversations.replies', { channel: channelId, ts: threadTs });
     const messages = (json.messages as SlackMessage[] | undefined) ?? [];
     return messages.some(
       (m) => m.user !== undefined && approvedUserIds.includes(m.user) && (m.text ?? '').trim() === token,

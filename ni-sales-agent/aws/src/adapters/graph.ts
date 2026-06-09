@@ -83,7 +83,27 @@ export class GraphClient {
       .sort((a, b) => b.receivedDateTime.localeCompare(a.receivedDateTime));
   }
 
+  /** Create a Reply-All draft and PREPEND our HTML above the quoted thread Graph generated.
+   *  Reply-All keeps CC'd participants on the conversation; prepending (not replacing) keeps
+   *  the prospect's quoted message intact. The forwarded path uses createDraftToExternal,
+   *  which deliberately does NOT preserve the quote. */
   async createDraftReply(messageId: string, bodyHtml: string): Promise<string> {
+    const created = await this.call(
+      `/users/${this.box()}/messages/${encodeURIComponent(messageId)}/createReplyAll`,
+      { method: 'POST' },
+    );
+    const draft = (await created.json()) as { id: string; body?: { content?: string } };
+    const existing = draft.body?.content ?? '';
+    await this.call(`/users/${this.box()}/messages/${encodeURIComponent(draft.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ body: { contentType: 'HTML', content: `${bodyHtml}${existing}` } }),
+    });
+    return draft.id;
+  }
+
+  /** Create a reply draft, then set its recipient to an explicit (body-derived) external address.
+   *  Used ONLY for forwarded enquiries (see gates.bodyDerivedRecipient). Never auto-sends. */
+  async createDraftToExternal(messageId: string, bodyHtml: string, toAddress: string): Promise<string> {
     const created = await this.call(
       `/users/${this.box()}/messages/${encodeURIComponent(messageId)}/createReply`,
       { method: 'POST' },
@@ -91,7 +111,10 @@ export class GraphClient {
     const draft = (await created.json()) as { id: string };
     await this.call(`/users/${this.box()}/messages/${encodeURIComponent(draft.id)}`, {
       method: 'PATCH',
-      body: JSON.stringify({ body: { contentType: 'HTML', content: bodyHtml } }),
+      body: JSON.stringify({
+        body: { contentType: 'HTML', content: bodyHtml },
+        toRecipients: [{ emailAddress: { address: toAddress } }],
+      }),
     });
     return draft.id;
   }
@@ -106,6 +129,15 @@ export class GraphClient {
     return json.value.length > 0;
   }
 
+  /** True if an unsent draft already exists on the conversation (idempotency guard — CLAUDE.md gate #4). */
+  async draftExistsInConversation(conversationId: string): Promise<boolean> {
+    const filter = encodeURIComponent(`conversationId eq '${this.odata(conversationId)}'`);
+    const path = `/users/${this.box()}/mailFolders/drafts/messages?$filter=${filter}&$top=1&$select=id`;
+    const res = await this.call(path);
+    const json = (await res.json()) as { value: unknown[] };
+    return json.value.length > 0;
+  }
+
   async latestInboundInConversation(
     conversationId: string,
     afterIso: string,
@@ -113,26 +145,33 @@ export class GraphClient {
     const filter = encodeURIComponent(
       `conversationId eq '${this.odata(conversationId)}' and receivedDateTime gt ${afterIso}`,
     );
-    const select = 'id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,hasAttachments';
+    const select = 'id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,hasAttachments,isDraft';
+    // Inbox folder only: excludes our own Drafts and Sent Items, so only genuine
+    // prospect replies are considered (never our staged drafts / sent emails).
     const path =
-      `/users/${this.box()}/messages?$filter=${filter}` +
+      `/users/${this.box()}/mailFolders/inbox/messages?$filter=${filter}` +
       `&$top=10&$select=${select}`;
     const res = await this.call(path);
     const json = (await res.json()) as { value: GraphMessage[] };
-    if (!json.value.length) return null;
-    const newest = json.value.reduce((a, b) =>
+    const mailbox = this.mailbox.toLowerCase();
+    const inbound = json.value.filter(
+      (m) => !m.isDraft && (m.from?.emailAddress?.address ?? '').toLowerCase() !== mailbox,
+    );
+    if (!inbound.length) return null;
+    const newest = inbound.reduce((a, b) =>
       b.receivedDateTime.localeCompare(a.receivedDateTime) > 0 ? b : a,
     );
     return toInbound(newest);
   }
 
-  async addAttachment(messageId: string, name: string, content: Buffer): Promise<void> {
+  async addAttachment(messageId: string, name: string, content: Buffer, contentType?: string): Promise<void> {
     await this.call(`/users/${this.box()}/messages/${encodeURIComponent(messageId)}/attachments`, {
       method: 'POST',
       body: JSON.stringify({
         '@odata.type': '#microsoft.graph.fileAttachment',
         name,
         contentBytes: content.toString('base64'),
+        ...(contentType ? { contentType } : {}),
       }),
     });
   }
@@ -149,6 +188,7 @@ interface GraphMessage {
   bodyPreview: string;
   body?: { contentType?: string; content?: string };
   hasAttachments: boolean;
+  isDraft?: boolean;
 }
 
 function toInbound(m: GraphMessage): InboundMessage {

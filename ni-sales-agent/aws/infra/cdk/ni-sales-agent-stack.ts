@@ -1,4 +1,4 @@
-import { Stack, StackProps, Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { Stack, StackProps, Duration, RemovalPolicy, Size } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -33,6 +33,22 @@ export class NiSalesAgentStack extends Stack {
       lifecycleRules: [{ expiration: Duration.days(365) }],
     });
 
+    const renderFn = new nodejs.NodejsFunction(this, 'RenderFn', {
+      functionName: 'ni-sales-render',
+      entry: 'src/render/handler.ts',
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      timeout: Duration.seconds(180),
+      memorySize: 3008,
+      ephemeralStorageSize: Size.mebibytes(1024),
+      bundling: {
+        format: nodejs.OutputFormat.ESM,
+        // @sparticuz/chromium ships a brotli binary; puppeteer-core resolves it at runtime.
+        // Neither survives esbuild bundling — keep both as installed modules.
+        nodeModules: ['@sparticuz/chromium', 'puppeteer-core'],
+      },
+    });
+
     const fn = new nodejs.NodejsFunction(this, 'AgentFn', {
       functionName: 'ni-sales-agent',
       entry: 'src/handler.ts',
@@ -44,13 +60,15 @@ export class NiSalesAgentStack extends Stack {
       // concurrency limit of 10 and won't allow reserving below that. The 20-min
       // cron + idempotent stage guards make overlapping ticks a non-issue. Request a
       // concurrency quota increase and re-add `reservedConcurrentExecutions: 1` later if desired.
-      bundling: { format: nodejs.OutputFormat.ESM, commandHooks: {
+      bundling: { format: nodejs.OutputFormat.ESM,
+        commandHooks: {
         beforeBundling: () => [],
         beforeInstall: () => [],
         afterBundling: (i: string, o: string) => [
           // i = aws/ (project root). Skills live at ni-sales-agent/skills; logo at src/assets.
           `cp -R ${i}/../skills ${o}/skills`,
           `mkdir -p ${o}/assets && cp -R ${i}/src/assets/. ${o}/assets/ 2>/dev/null || true`,
+          `mkdir -p ${o}/content && cp -R ${i}/src/content/. ${o}/content/ 2>/dev/null || true`,
         ],
       } },
       environment: {
@@ -71,6 +89,7 @@ export class NiSalesAgentStack extends Stack {
         HUBSPOT_SECRET_ID: hubspotSecret.secretName,
         SLACK_SECRET_ID: slackSecret.secretName,
         BEDROCK_MODEL_ID: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0',
+        RENDER_FUNCTION_NAME: renderFn.functionName,
       },
     });
 
@@ -79,6 +98,7 @@ export class NiSalesAgentStack extends Stack {
     graphSecret.grantRead(fn);
     hubspotSecret.grantRead(fn);
     slackSecret.grantRead(fn);
+    renderFn.grantInvoke(fn);
 
     // Bedrock invoke. The global inference profile routes across regions, so the
     // underlying foundation-model invoke perm must span regions. Action-scoped; tighten later.
