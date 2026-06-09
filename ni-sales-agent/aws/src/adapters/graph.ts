@@ -129,6 +129,15 @@ export class GraphClient {
     return json.value.length > 0;
   }
 
+  /** True if an unsent draft already exists on the conversation (idempotency guard — CLAUDE.md gate #4). */
+  async draftExistsInConversation(conversationId: string): Promise<boolean> {
+    const filter = encodeURIComponent(`conversationId eq '${this.odata(conversationId)}'`);
+    const path = `/users/${this.box()}/mailFolders/drafts/messages?$filter=${filter}&$top=1&$select=id`;
+    const res = await this.call(path);
+    const json = (await res.json()) as { value: unknown[] };
+    return json.value.length > 0;
+  }
+
   async latestInboundInConversation(
     conversationId: string,
     afterIso: string,

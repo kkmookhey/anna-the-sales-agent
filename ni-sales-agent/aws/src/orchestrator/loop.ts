@@ -15,6 +15,7 @@ export interface GraphPort {
   createDraftReply(messageId: string, bodyHtml: string): Promise<string>;
   createDraftToExternal(messageId: string, bodyHtml: string, toAddress: string): Promise<string>;
   wasReplySent(conversationId: string, afterIso: string): Promise<boolean>;
+  draftExistsInConversation(conversationId: string): Promise<boolean>;
   latestInboundInConversation(conversationId: string, afterIso: string): Promise<InboundMessage | null>;
   addAttachment(messageId: string, name: string, content: Buffer, contentType?: string): Promise<void>;
 }
@@ -318,8 +319,12 @@ async function stageDraft(
   deps: LoopDeps,
   nowIso: string,
   latest: InboundMessage | null,
-): Promise<AdvanceResult> {
+): Promise<AdvanceResult | null> {
   const { config, graph, repo } = deps;
+  if (!config.dryRun && (await graph.draftExistsInConversation(deal.deal_id))) {
+    logger.info('skip_duplicate_draft', { deal_id: deal.deal_id, stage: deal.stage, action: actionType });
+    return null;
+  }
   const replyToMessageId = latest?.id ?? deal.last_inbound_id;
   const fwd = deal.intake.source === 'forwarded';
   const toProspect = fwd ? deal.intake.proposed_recipient : undefined;
@@ -366,8 +371,12 @@ async function stageProposal(
   nowIso: string,
   latest: InboundMessage | null,
   verdict: { assumptions: string[] },
-): Promise<AdvanceResult> {
+): Promise<AdvanceResult | null> {
   const { config, graph, repo, judge, deck, s3 } = deps;
+  if (!config.dryRun && (await graph.draftExistsInConversation(deal.deal_id))) {
+    logger.info('skip_duplicate_draft', { deal_id: deal.deal_id, stage: deal.stage, action: 'proposal' });
+    return null;
+  }
 
   deal.assumptions = verdict.assumptions;
   const content = await judge.buildProposalContent({

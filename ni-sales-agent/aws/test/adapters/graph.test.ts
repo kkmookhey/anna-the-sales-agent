@@ -176,4 +176,26 @@ describe('GraphClient', () => {
     const patchBody = JSON.parse((fetchMock.mock.calls[2]![1] as RequestInit).body as string);
     expect(patchBody.body.content).toBe('<p>Our reply</p>');
   });
+
+  it('draftExistsInConversation queries the drafts folder, escapes quotes, and returns true when a draft exists', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { value: [{ id: 'existing-draft' }] } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const exists = await g.draftExistsInConversation("conv'1");
+    expect(exists).toBe(true);
+    const url = fetchMock.mock.calls[1]![0] as string;
+    expect(url).toContain('/mailFolders/drafts/messages');
+    expect(decodeURIComponent(url)).toContain("conversationId eq 'conv''1'");
+  });
+
+  it('draftExistsInConversation returns false when no draft exists', async () => {
+    mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { value: [] } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    expect(await g.draftExistsInConversation('conv-2')).toBe(false);
+  });
 });

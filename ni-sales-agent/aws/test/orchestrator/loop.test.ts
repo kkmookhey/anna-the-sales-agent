@@ -26,6 +26,7 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
       createDraftReply: vi.fn().mockResolvedValue('draft-1'),
       createDraftToExternal: vi.fn().mockResolvedValue('draft-ext-1'),
       wasReplySent: vi.fn().mockResolvedValue(false),
+      draftExistsInConversation: vi.fn().mockResolvedValue(false),
       latestInboundInConversation: vi.fn().mockResolvedValue(null),
       addAttachment: vi.fn().mockResolvedValue(undefined),
     },
@@ -447,5 +448,32 @@ describe('runLoop — quiet ticks', () => {
     expect(deps.slack.postStaging).not.toHaveBeenCalled();
     expect(deps.slack.upsertCanvas).toHaveBeenCalledOnce();
     expect(summary).toEqual({ processed: 0, staged: 0, advanced: 0, disqualified: 0, flagged: 0, errors: 0 });
+  });
+});
+
+describe('runLoop — idempotency guard', () => {
+  it('does not create a second proposal draft when one already exists on the thread', async () => {
+    const deps = baseDeps({});
+    (deps.graph.draftExistsInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'SCOPE_REVIEW', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'm1', last_inbound_at: '2026-06-02T10:00:00Z', next_followup_date: null, followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, actions: [], flags: [], intake: { source: 'direct', recipient_verified: true } },
+    ]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm2', conversationId: 'conv-1', subject: 'Re: VAPT', fromName: 'Shashank',
+      fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-02T12:00:00Z',
+      bodyPreview: 'answers', bodyFull: '<p>answers</p>', hasAttachments: false,
+    });
+
+    await runLoop(deps);
+
+    expect(deps.judge.buildProposalContent).not.toHaveBeenCalled();
+    expect(deps.deck.render).not.toHaveBeenCalled();
+    expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
   });
 });
