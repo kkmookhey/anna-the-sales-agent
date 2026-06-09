@@ -92,6 +92,17 @@ function statValue(v: string): string {
   return esc(v);
 }
 
+/** Cover headline auto-scales down for long titles so a wrapped <h1> never crowds the
+ *  bottom stat-callouts. The LLM is asked to keep titleLine short; this is the safety net. */
+export function coverTitleFontPx(title: string): number {
+  const len = title.trim().length;
+  if (len <= 18) return 150;
+  if (len <= 30) return 124;
+  if (len <= 44) return 100;
+  if (len <= 60) return 82;
+  return 68;
+}
+
 // ─────────────────────────────────────────────
 // Slide descriptor returned by each builder
 // ─────────────────────────────────────────────
@@ -147,7 +158,7 @@ function buildCover(content: ProposalContent): SlideDesc {
 
     <div style="position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;height:100%;padding:0 120px;">
       <p class="eyebrow" style="margin-bottom:28px;">Proposal for ${esc(content.company)}</p>
-      <h1 class="title" style="font-size:150px;line-height:0.96;max-width:1500px;letter-spacing:-0.025em;">${esc(content.titleLine)}</h1>
+      <h1 class="title" style="font-size:${coverTitleFontPx(content.titleLine)}px;line-height:0.96;max-width:1500px;letter-spacing:-0.025em;">${esc(content.titleLine)}</h1>
       <p style="font-family:var(--font-display);font-size:40px;font-weight:300;color:rgba(255,255,255,0.85);margin:48px 0 0;max-width:1300px;line-height:1.2;">
         ${esc(serviceLabels)}
       </p>

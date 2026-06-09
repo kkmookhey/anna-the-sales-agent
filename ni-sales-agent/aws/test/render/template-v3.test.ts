@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderProposalHtml } from '../../src/render/template.js';
+import { renderProposalHtml, coverTitleFontPx } from '../../src/render/template.js';
 import type { ProposalContent } from '../../src/proposal/types.js';
 
 const content: ProposalContent = {
@@ -52,5 +52,22 @@ describe('renderProposalHtml v3', () => {
     const html = renderProposalHtml(content);
     expect(html).toContain('class="chapter"');
     expect(html).toMatch(/<span class="dot"><\/span>/); // foot counter dot present
+  });
+});
+
+describe('coverTitleFontPx', () => {
+  it('returns the full size for a short title', () => {
+    expect(coverTitleFontPx('Web VAPT')).toBe(150);
+  });
+  it('scales down as the title gets longer', () => {
+    const short = coverTitleFontPx('Web VAPT');
+    const long = coverTitleFontPx('Comprehensive Web Application and API Security Assessment Programme');
+    expect(long).toBeLessThan(short);
+  });
+  it('cover h1 uses the scaled font-size for a long title', () => {
+    const longTitle = 'Comprehensive Web Application and API Security Assessment Programme';
+    const html = renderProposalHtml({ ...content, titleLine: longTitle });
+    expect(html).toContain(`font-size:${coverTitleFontPx(longTitle)}px`);
+    expect(html).not.toContain('font-size:150px'); // the cover h1 is no longer the default 150
   });
 });

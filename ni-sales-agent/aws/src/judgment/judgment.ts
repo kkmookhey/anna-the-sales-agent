@@ -157,6 +157,8 @@ export class JudgmentService {
       'Populate `credentials` from the library (lead with PCI QSA, PCI PIN Assessor, CREST, HITRUST ' +
       'on technical engagements). Populate `transilienceEdge` only when it strengthens this case; ' +
       'otherwise return []. ' +
+      'Keep titleLine SHORT — at most 6 words. It is the cover headline rendered very ' +
+      'large, so a long title wraps and crowds the layout. ' +
       'Keep commercials.text to ONE short sentence — detailed pricing/terms live in a separate commercials document, not the deck.';
     const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines'>>(
       system,
