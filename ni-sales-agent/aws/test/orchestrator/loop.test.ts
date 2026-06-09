@@ -452,6 +452,35 @@ describe('runLoop — quiet ticks', () => {
 });
 
 describe('runLoop — idempotency guard', () => {
+  it('does not increment followup_count when a follow-up is guarded by an existing draft', async () => {
+    const deps = baseDeps({});
+    (deps.graph.draftExistsInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    // PROPOSAL_SENT deal whose cadence is due → STAGE_FOLLOWUP
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'PROPOSAL_SENT', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-05-01T00:00:00Z',
+        last_inbound_id: 'm1', last_inbound_at: '2026-05-20T10:00:00Z',
+        next_followup_date: '2026-05-25T00:00:00Z', followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, actions: [], flags: [], intake: { source: 'direct', recipient_verified: true } },
+    ]);
+
+    await runLoop(deps);
+
+    // STAGE_FOLLOWUP fired — draftFollowup was called
+    expect(deps.judge.draftFollowup).toHaveBeenCalledOnce();
+    // guard fired — no Outlook draft was created
+    expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
+    // If the deal was persisted at all, followup_count must still be 0 (guard fired, no increment)
+    const putCalls = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls;
+    for (const call of putCalls) {
+      expect((call[0] as { followup_count: number }).followup_count).toBe(0);
+    }
+  });
+
   it('does not create a second proposal draft when one already exists on the thread', async () => {
     const deps = baseDeps({});
     (deps.graph.draftExistsInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(true);

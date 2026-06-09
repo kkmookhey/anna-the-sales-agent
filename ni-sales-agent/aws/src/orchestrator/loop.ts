@@ -287,7 +287,6 @@ async function advanceDeal(
 
     case 'STAGE_FOLLOWUP': {
       const f = await judge.draftFollowup({ company: deal.company, contactName: deal.contact_name, followupNumber: deal.followup_count + 1, scopeSummary: deal.scope as unknown as Record<string, unknown> });
-      deal.followup_count++;
       return stageDraft(deal, t.nextStage, f.draft_subject, f.draft_body_html, 'followup_staged', deps, nowIso, null);
     }
 
@@ -350,6 +349,7 @@ async function stageDraft(
 
   const from = deal.stage;
   deal.stage = nextStage;
+  if (actionType === 'followup_staged') deal.followup_count++;
   deal.actions.push(action(from, nextStage, actionType, `staged: ${subject}`, nowIso));
   await repo.putDeal(deal);
 
