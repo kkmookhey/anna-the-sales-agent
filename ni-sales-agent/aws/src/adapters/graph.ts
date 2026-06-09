@@ -83,15 +83,20 @@ export class GraphClient {
       .sort((a, b) => b.receivedDateTime.localeCompare(a.receivedDateTime));
   }
 
+  /** Create a Reply-All draft and PREPEND our HTML above the quoted thread Graph generated.
+   *  Reply-All keeps CC'd participants on the conversation; prepending (not replacing) keeps
+   *  the prospect's quoted message intact. The forwarded path uses createDraftToExternal,
+   *  which deliberately does NOT preserve the quote. */
   async createDraftReply(messageId: string, bodyHtml: string): Promise<string> {
     const created = await this.call(
-      `/users/${this.box()}/messages/${encodeURIComponent(messageId)}/createReply`,
+      `/users/${this.box()}/messages/${encodeURIComponent(messageId)}/createReplyAll`,
       { method: 'POST' },
     );
-    const draft = (await created.json()) as { id: string };
+    const draft = (await created.json()) as { id: string; body?: { content?: string } };
+    const existing = draft.body?.content ?? '';
     await this.call(`/users/${this.box()}/messages/${encodeURIComponent(draft.id)}`, {
       method: 'PATCH',
-      body: JSON.stringify({ body: { contentType: 'HTML', content: bodyHtml } }),
+      body: JSON.stringify({ body: { contentType: 'HTML', content: `${bodyHtml}${existing}` } }),
     });
     return draft.id;
   }

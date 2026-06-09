@@ -146,4 +146,34 @@ describe('GraphClient', () => {
     expect(body.name).toBe('proposal.pptx');
     expect(typeof body.contentBytes).toBe('string');
   });
+
+  it('createDraftReply uses Reply-All and prepends our HTML above the quoted thread', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { id: 'draft-9', body: { contentType: 'HTML', content: '<div class="quote">--- original thread ---</div>' } } },
+      { json: {} },
+    ]);
+
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const id = await g.createDraftReply('m1', '<p>Our reply</p>');
+
+    expect(id).toBe('draft-9');
+    const createUrl = fetchMock.mock.calls[1]![0] as string;
+    expect(createUrl).toContain('/messages/m1/createReplyAll');
+    const patchBody = JSON.parse((fetchMock.mock.calls[2]![1] as RequestInit).body as string);
+    expect(patchBody.body.content).toBe('<p>Our reply</p><div class="quote">--- original thread ---</div>');
+  });
+
+  it('createDraftReply tolerates a draft response with no body content', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { id: 'draft-10' } },
+      { json: {} },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const id = await g.createDraftReply('m1', '<p>Our reply</p>');
+    expect(id).toBe('draft-10');
+    const patchBody = JSON.parse((fetchMock.mock.calls[2]![1] as RequestInit).body as string);
+    expect(patchBody.body.content).toBe('<p>Our reply</p>');
+  });
 });
