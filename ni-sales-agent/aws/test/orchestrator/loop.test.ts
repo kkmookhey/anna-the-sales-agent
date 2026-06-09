@@ -435,3 +435,17 @@ describe('runLoop — forwarded draft routing', () => {
     expect(deps.graph.createDraftReply).toHaveBeenCalled();
   });
 });
+
+describe('runLoop — quiet ticks', () => {
+  it('skips the Slack summary when nothing happened but still updates the canvas', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    const summary = await runLoop(deps);
+
+    expect(deps.slack.postStaging).not.toHaveBeenCalled();
+    expect(deps.slack.upsertCanvas).toHaveBeenCalledOnce();
+    expect(summary).toEqual({ processed: 0, staged: 0, advanced: 0, disqualified: 0, flagged: 0, errors: 0 });
+  });
+});

@@ -174,10 +174,15 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const canvasId = await slack.upsertCanvas(existingCanvasId, 'NI Sales — Pipeline', board);
   if (!existingCanvasId) await repo.putMeta('canvas_id', canvasId);
 
-  const header = `:robot_face: *NI Sales Agent — run summary*${config.dryRun ? ' (dry-run)' : ''}\n` +
-    `_${summary.processed} inbound · ${summary.staged} staged · ${summary.advanced} advanced · ` +
-    `${summary.disqualified} disqualified · ${summary.flagged} flagged · ${summary.errors} errors_`;
-  await slack.postStaging(config.slackChannelId, [header, ...stagingLines, ...reviewLines].join('\n\n'));
+  logger.info('run_done', { ...summary });
+
+  const hasActivity = stagingLines.length > 0 || reviewLines.length > 0;
+  if (hasActivity) {
+    const header = `:robot_face: *NI Sales Agent — run summary*${config.dryRun ? ' (dry-run)' : ''}\n` +
+      `_${summary.processed} inbound · ${summary.staged} staged · ${summary.advanced} advanced · ` +
+      `${summary.disqualified} disqualified · ${summary.flagged} flagged · ${summary.errors} errors_`;
+    await slack.postStaging(config.slackChannelId, [header, ...stagingLines, ...reviewLines].join('\n\n'));
+  }
 
   return summary;
 }
