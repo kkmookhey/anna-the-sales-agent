@@ -36,6 +36,7 @@ export class JudgmentService {
     fromName: string;
     subject: string;
     bodyPreview: string;
+    attachmentText?: string;
   }): Promise<ScopeResult> {
     const system = `${loadSkill('enquiry-scoping')}\n\n${JSON_RULE}\n` +
       'Output keys: service_lines (string[]), draft_subject (string), draft_body_html (string), ' +
@@ -46,13 +47,19 @@ export class JudgmentService {
       'Do not infer the company from a free-email domain like gmail.com.';
     return this.judge.askJson<ScopeResult>(
       system,
-      JSON.stringify({ from_name: inbound.fromName, subject: inbound.subject, body: inbound.bodyPreview }),
+      JSON.stringify({
+        from_name: inbound.fromName,
+        subject: inbound.subject,
+        body: inbound.bodyPreview,
+        ...(inbound.attachmentText ? { attachment_content: inbound.attachmentText } : {}),
+      }),
     );
   }
 
   async assessSufficiency(input: {
     scopeSoFar: Record<string, unknown>;
     reply: string;
+    attachmentText?: string;
   }): Promise<SufficiencyResult> {
     const system = `${loadSkill('scope-sufficiency')}\n\n${JSON_RULE}\n` +
       'Output keys: sufficient (boolean), missing (string[]), assumptions (string[]), ' +
@@ -64,7 +71,11 @@ export class JudgmentService {
       'blocking, unassumable detail.';
     return this.judge.askJson<SufficiencyResult>(
       system,
-      JSON.stringify({ scope_so_far: input.scopeSoFar, latest_reply: input.reply }),
+      JSON.stringify({
+        scope_so_far: input.scopeSoFar,
+        latest_reply: input.reply,
+        ...(input.attachmentText ? { attachment_content: input.attachmentText } : {}),
+      }),
     );
   }
 
