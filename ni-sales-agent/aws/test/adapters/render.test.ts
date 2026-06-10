@@ -41,3 +41,25 @@ describe('RenderClient', () => {
     await expect(client.render({} as never)).rejects.toThrow(/no docxBase64/i);
   });
 });
+
+describe('RenderClient.parseAttachment', () => {
+  it('invokes the worker with a parse action and returns the parsed result', async () => {
+    const send = vi.fn().mockResolvedValue({
+      Payload: new TextEncoder().encode(JSON.stringify({ name: 'rfp.pdf', text: '95 screens', truncated: false })),
+    });
+    const client = new RenderClient({ send } as never, 'ni-sales-render');
+    const out = await client.parseAttachment({ name: 'rfp.pdf', contentType: 'application/pdf', bytes: Buffer.from('x') });
+    expect(out).toEqual({ name: 'rfp.pdf', text: '95 screens', truncated: false, error: undefined });
+    const cmd = send.mock.calls[0]![0];
+    const payload = JSON.parse(new TextDecoder().decode(cmd.input.Payload));
+    expect(payload.action).toBe('parse');
+    expect(payload.file.name).toBe('rfp.pdf');
+    expect(typeof payload.file.bytesBase64).toBe('string');
+  });
+
+  it('throws when the worker reports a FunctionError', async () => {
+    const send = vi.fn().mockResolvedValue({ FunctionError: 'Unhandled', Payload: new TextEncoder().encode('boom') });
+    const client = new RenderClient({ send } as never, 'ni-sales-render');
+    await expect(client.parseAttachment({ name: 'a.pdf', contentType: 'application/pdf', bytes: Buffer.from('x') })).rejects.toThrow(/parse lambda failed/);
+  });
+});
