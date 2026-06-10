@@ -44,8 +44,10 @@ export class NiSalesAgentStack extends Stack {
       bundling: {
         format: nodejs.OutputFormat.ESM,
         // @sparticuz/chromium ships a brotli binary; puppeteer-core resolves it at runtime.
-        // Neither survives esbuild bundling — keep both as installed modules.
-        nodeModules: ['@sparticuz/chromium', 'puppeteer-core'],
+        // pdf-parse/mammoth/xlsx are CommonJS and use dynamic require() (e.g. mammoth →
+        // require('fs')), which esbuild's ESM output cannot bundle. Keep all of these as
+        // installed node modules so they run as native CJS.
+        nodeModules: ['@sparticuz/chromium', 'puppeteer-core', 'pdf-parse', 'mammoth', 'xlsx'],
       },
     });
 
