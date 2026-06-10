@@ -20,6 +20,7 @@ function isParse(event: WorkerEvent): event is ParseEvent {
 
 export async function handler(event: WorkerEvent): Promise<RenderResult | ParseResult> {
   if (isParse(event)) {
+    if (!event.file) return { name: '', text: '', truncated: false, error: 'parse: missing file' };
     const { name, contentType, bytesBase64 } = event.file;
     return parseDocument({ name, contentType, bytes: Buffer.from(bytesBase64, 'base64') });
   }

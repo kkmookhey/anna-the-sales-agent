@@ -22,4 +22,9 @@ describe('render handler — parse action', () => {
   it('still requires content for a render request (backward compatible)', async () => {
     await expect(handler({} as never)).rejects.toThrow(/missing content/);
   });
+
+  it('returns an error result when a parse event has no file', async () => {
+    const res = await handler({ action: 'parse' } as never);
+    expect('error' in res && res.error).toBeTruthy();
+  });
 });
