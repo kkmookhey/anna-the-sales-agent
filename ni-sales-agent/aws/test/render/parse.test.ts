@@ -66,4 +66,9 @@ describe('parseDocument', () => {
     const r = await parseDocument({ name: 'weird.bin', contentType: 'application/octet-stream', bytes: Buffer.from('x') });
     expect(r.error).toMatch(/unsupported/i);
   });
+  it('returns an error result (does not throw) for an empty DOCX buffer', async () => {
+    const r = await parseDocument({ name: 'empty.docx', contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', bytes: Buffer.from('') });
+    expect(r.error).toBeTruthy();
+    expect(r.text).toBe('');
+  });
 });

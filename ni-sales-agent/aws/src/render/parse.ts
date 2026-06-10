@@ -27,7 +27,8 @@ async function extractDocx(bytes: Buffer): Promise<string> {
   return out.value ?? '';
 }
 function extractXlsx(bytes: Buffer): string {
-  const wb = XLSX.read(bytes, { type: 'buffer' });
+  // sheetRows caps rows at parse time (defence-in-depth; the 4.5MB file cap upstream is the primary bound).
+  const wb = XLSX.read(bytes, { type: 'buffer', sheetRows: 50_000 });
   const parts: string[] = [];
   for (const name of wb.SheetNames) {
     const sheet = wb.Sheets[name];
