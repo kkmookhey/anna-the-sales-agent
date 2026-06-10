@@ -89,9 +89,9 @@ Draft an email like this (adapt to the specific enquiry — do not send verbatim
 >
 > If it's easier, I'm glad to cover these on a quick 20-minute call — just send a couple
 > of times that work.
->
-> Best regards,
-> <NI sales signature>
+
+(End the body on your last content sentence. Do **not** write a closing or sign-off —
+the system appends the fixed signature "Logan - NI Sales Agent" automatically.)
 
 Also set `deal.service_lines` to the tags you inferred. If `dfir` with an active
 incident, **do not** draft this email — flag the deal for immediate human handoff.
@@ -100,4 +100,4 @@ incident, **do not** draft this email — flag the deal for immediate human hand
 
 Professional, warm, concise, no fluff. Contractions are fine. No buzzwords ("leverage",
 "synergy", "circle back"). No exclamation-point enthusiasm. Confident but not pushy.
-Signs off as NI sales, not as a named individual unless the human sets one.
+Do not write a sign-off — the system appends the fixed signature "Logan - NI Sales Agent".

@@ -12,6 +12,10 @@ import type { ProposalContent } from '../proposal/types.js';
 
 const escHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/** Canonical sign-off appended to every outbound customer email (drafts + proposal cover).
+ *  The LLM is told NOT to write its own sign-off; this is the single source of truth. */
+const EMAIL_SIGN_OFF = '<p>Best regards,<br/>Logan - NI Sales Agent</p>';
+
 export interface GraphPort {
   listInbound(sinceIso: string): Promise<InboundMessage[]>;
   createDraftReply(messageId: string, bodyHtml: string): Promise<string>;
@@ -347,17 +351,18 @@ async function stageDraft(
   const replyToMessageId = latest?.id ?? deal.last_inbound_id;
   const fwd = deal.intake.source === 'forwarded';
   const toProspect = fwd ? deal.intake.proposed_recipient : undefined;
+  const body = `${bodyHtml}${EMAIL_SIGN_OFF}`;
 
   let draftRef = '(dry-run — text below)';
   let recipientFlag = '';
   if (!config.dryRun) {
     if (toProspect) {
       const to = bodyDerivedRecipient(toProspect);
-      const draftId = await graph.createDraftToExternal(replyToMessageId, bodyHtml, to);
+      const draftId = await graph.createDraftToExternal(replyToMessageId, body, to);
       draftRef = `Outlook draft created (id ${draftId})`;
       recipientFlag = `\n:warning: Recipient \`${to}\` was extracted from a FORWARDED body — verify before sending. Forwarded by \`${deal.intake.forwarded_by ?? 'unknown'}\`.`;
     } else {
-      const draftId = await graph.createDraftReply(replyToMessageId, bodyHtml);
+      const draftId = await graph.createDraftReply(replyToMessageId, body);
       draftRef = `Outlook draft created (id ${draftId})`;
       if (fwd) recipientFlag = `\n:warning: Couldn't determine the prospect's address from the forward — set the recipient manually before sending.`;
     }
@@ -381,7 +386,7 @@ async function stageDraft(
     `Approve by: sending the draft${nextStage === 'PO_PENDING_APPROVAL' ? '  |  replying SHIP-IT for HubSpot writes' : ''}\n` +
     `Flags: ${deal.flags.length ? deal.flags.map((f) => f.reason).join(', ') : 'none'}\n` +
     (attachmentNote ? `${attachmentNote}\n` : '') +
-    `\n> *Subject:* ${subject}\n> ${htmlToText(bodyHtml).slice(0, 1500)}`;
+    `\n> *Subject:* ${subject}\n> ${htmlToText(body).slice(0, 1500)}`;
 
   return { text, staged: true, advanced: false };
 }
@@ -425,7 +430,7 @@ async function stageProposal(
     `It lists the assumptions we made so you can correct anything that's off. ` +
     `The deck contains the engagement overview and the commercials document contains pricing. ` +
     `Happy to walk through it on a short call.</p>` +
-    `<p>Best regards,<br/>Network Intelligence — Sales</p>`;
+    EMAIL_SIGN_OFF;
 
   let draftRef = `(dry-run — no draft; deck stored at ${deckUri})`;
   if (!config.dryRun) {
