@@ -38,6 +38,8 @@ export class RenderClient {
     if (res.FunctionError) throw new Error(`parse lambda failed: ${res.FunctionError} ${text}`);
     if (!text) throw new Error('parse lambda returned empty payload');
     const parsed = JSON.parse(text) as ParsedAttachment;
+    // A worker {error} result has text:'' (a string) and passes through correctly — this guard
+    // only rejects a truly malformed payload that lacks both text and error.
     if (typeof parsed.text !== 'string' && !parsed.error) throw new Error(`parse lambda returned no text: ${text}`);
     return { name: parsed.name ?? file.name, text: parsed.text ?? '', truncated: parsed.truncated ?? false, error: parsed.error };
   }

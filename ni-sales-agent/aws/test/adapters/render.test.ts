@@ -62,4 +62,24 @@ describe('RenderClient.parseAttachment', () => {
     const client = new RenderClient({ send } as never, 'ni-sales-render');
     await expect(client.parseAttachment({ name: 'a.pdf', contentType: 'application/pdf', bytes: Buffer.from('x') })).rejects.toThrow(/parse lambda failed/);
   });
+
+  it('returns a worker {error} result without throwing', async () => {
+    const send = vi.fn().mockResolvedValue({
+      Payload: new TextEncoder().encode(JSON.stringify({ name: 'x.xyz', text: '', truncated: false, error: 'unsupported file type: .xyz' })),
+    });
+    const client = new RenderClient({ send } as never, 'ni-sales-render');
+    const out = await client.parseAttachment({ name: 'x.xyz', contentType: 'application/octet-stream', bytes: Buffer.from('x') });
+    expect(out.error).toBe('unsupported file type: .xyz');
+    expect(out.text).toBe('');
+  });
+
+  it('includes contentType in the parse wire payload', async () => {
+    const send = vi.fn().mockResolvedValue({
+      Payload: new TextEncoder().encode(JSON.stringify({ name: 'rfp.pdf', text: 'ok', truncated: false })),
+    });
+    const client = new RenderClient({ send } as never, 'ni-sales-render');
+    await client.parseAttachment({ name: 'rfp.pdf', contentType: 'application/pdf', bytes: Buffer.from('x') });
+    const payload = JSON.parse(new TextDecoder().decode(send.mock.calls[0]![0].input.Payload));
+    expect(payload.file.contentType).toBe('application/pdf');
+  });
 });
