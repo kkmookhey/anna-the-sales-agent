@@ -198,4 +198,41 @@ describe('GraphClient', () => {
     const g = new GraphClient(creds, 'sales@networkintelligence.ai');
     expect(await g.draftExistsInConversation('conv-2')).toBe(false);
   });
+
+  it('listAttachments returns metadata only (no bytes) via $select', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { value: [
+        { id: 'att1', name: 'rfp.pdf', contentType: 'application/pdf', size: 1234, isInline: false },
+        { id: 'att2', name: 'logo.png', contentType: 'image/png', size: 50, isInline: true },
+      ] } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const out = await g.listAttachments('m1');
+    expect(out).toHaveLength(2);
+    expect(out[0]).toEqual({ id: 'att1', name: 'rfp.pdf', contentType: 'application/pdf', size: 1234, isInline: false });
+    const url = fetchMock.mock.calls[1]![0] as string;
+    expect(url).toContain('/messages/m1/attachments');
+    expect(decodeURIComponent(url)).toContain('$select=id,name,contentType,size,isInline');
+  });
+
+  it('getAttachmentBytes decodes a fileAttachment contentBytes to a Buffer', async () => {
+    const payload = Buffer.from('hello pdf bytes', 'utf-8').toString('base64');
+    mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { '@odata.type': '#microsoft.graph.fileAttachment', id: 'att1', name: 'rfp.pdf', contentBytes: payload } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const buf = await g.getAttachmentBytes('m1', 'att1');
+    expect(buf.toString('utf-8')).toBe('hello pdf bytes');
+  });
+
+  it('getAttachmentBytes rejects a non-file attachment (e.g. itemAttachment)', async () => {
+    mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { '@odata.type': '#microsoft.graph.itemAttachment', id: 'att1', name: 'forwarded.eml' } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    await expect(g.getAttachmentBytes('m1', 'att1')).rejects.toThrow(/not a file attachment/i);
+  });
 });

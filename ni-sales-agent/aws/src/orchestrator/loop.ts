@@ -3,12 +3,18 @@ import type { Deal, Scope, Stage } from '../state/types.js';
 import { emptyScope } from '../state/types.js';
 import { decideTransition, resolveScopeReview, resolveProposalReply } from './transitions.js';
 import { bareEmail, bodyDerivedRecipient, scanForInjection, verifiedRecipient } from '../gates/gates.js';
+import { decideAttachment, MAX_FILES_PER_MESSAGE } from '../gates/attachments.js';
+import type { AttachmentMeta } from '../adapters/graph.js';
 import { isAutomatedSender } from './intake.js';
 import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
 import type { ProposalContent } from '../proposal/types.js';
 
 const escHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Canonical sign-off appended to every outbound customer email (drafts + proposal cover).
+ *  The LLM is told NOT to write its own sign-off; this is the single source of truth. */
+const EMAIL_SIGN_OFF = '<p>Best regards,<br/>Logan - NI Sales Agent</p>';
 
 export interface GraphPort {
   listInbound(sinceIso: string): Promise<InboundMessage[]>;
@@ -18,6 +24,8 @@ export interface GraphPort {
   draftExistsInConversation(conversationId: string): Promise<boolean>;
   latestInboundInConversation(conversationId: string, afterIso: string): Promise<InboundMessage | null>;
   addAttachment(messageId: string, name: string, content: Buffer, contentType?: string): Promise<void>;
+  listAttachments(messageId: string): Promise<AttachmentMeta[]>;
+  getAttachmentBytes(messageId: string, attachmentId: string): Promise<Buffer>;
 }
 export interface InboundMessage {
   id: string; conversationId: string; subject: string; fromName: string; fromAddress: string;
@@ -32,8 +40,8 @@ export interface HubSpotPort {
   createDeal(props: { dealname: string; pipeline: string; dealstage: string; hubspot_owner_id: string; amount?: string }): Promise<string>;
 }
 export interface JudgePort {
-  scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string; company: string; scope: Partial<Scope> }>;
-  assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string; scope?: Partial<Scope> }>;
+  scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string; attachmentText?: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string; company: string; scope: Partial<Scope> }>;
+  assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string; attachmentText?: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string; scope?: Partial<Scope> }>;
   draftFollowup(i: { company: string; contactName: string; followupNumber: number; scopeSummary: Record<string, unknown> }): Promise<{ draft_subject: string; draft_body_html: string }>;
   classifyInbound(i: { fromName: string; fromAddress: string; subject: string; body: string }): Promise<{ category: 'enquiry' | 'forwarded_enquiry' | 'not_enquiry'; original_sender?: { name: string; email: string }; confidence: 'high' | 'low'; reason: string }>;
   classifyProposalReply(i: { subject: string; reply: string }): Promise<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }>;
@@ -51,6 +59,7 @@ export interface S3Port {
 }
 export interface DeckPort {
   render(content: ProposalContent): Promise<{ pdf: Buffer; docx: Buffer }>;
+  parseAttachment(file: { name: string; contentType: string; bytes: Buffer }): Promise<{ name: string; text: string; truncated: boolean; error?: string }>;
 }
 
 export interface LoopDeps {
@@ -92,7 +101,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const inbound = await graph.listInbound(deps.lastRunIso);
   const deals = await repo.listDeals();
   const byConversation = new Map(deals.map((d) => [d.deal_id, d]));
-  const originatingContext = new Map<string, { subject: string; body: string }>();
+  const originatingContext = new Map<string, { subject: string; body: string; hasAttachments: boolean }>();
   const stagingLines: string[] = [];
 
   const reviewLines: string[] = [];
@@ -152,7 +161,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
         : { source: 'direct', recipient_verified: true },
     };
     byConversation.set(fresh.deal_id, fresh);
-    originatingContext.set(fresh.deal_id, { subject: m.subject, body });
+    originatingContext.set(fresh.deal_id, { subject: m.subject, body, hasAttachments: m.hasAttachments });
   }
 
   for (const deal of byConversation.values()) {
@@ -162,6 +171,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
         stagingLines.push(line.text);
         if (line.staged) summary.staged++;
         if (line.advanced) summary.advanced++;
+        if (line.newFlags) summary.flagged += line.newFlags;
       }
     } catch (err) {
       summary.errors++;
@@ -188,13 +198,13 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   return summary;
 }
 
-interface AdvanceResult { text: string; staged: boolean; advanced: boolean }
+interface AdvanceResult { text: string; staged: boolean; advanced: boolean; newFlags?: number }
 
 async function advanceDeal(
   deal: Deal,
   deps: LoopDeps,
   nowIso: string,
-  originating: { subject: string; body: string } | null,
+  originating: { subject: string; body: string; hasAttachments: boolean } | null,
 ): Promise<AdvanceResult | null> {
   const { config, graph, slack, hubspot, judge, repo } = deps;
 
@@ -217,17 +227,23 @@ async function advanceDeal(
   switch (t.kind) {
     case 'NOOP': {
       if (deal.stage === 'SCOPE_REVIEW' && latest) {
-        const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: htmlToText(latest.bodyFull) });
+        const att = latest.hasAttachments ? await extractAttachmentText(deps, latest.id) : { text: '', note: null, flags: [] };
+        if (att.flags.length) deal.flags.push(...att.flags.map((reason) => ({ ts: nowIso, message_id: latest.id, reason })));
+        const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: htmlToText(latest.bodyFull), attachmentText: att.text || undefined });
         const branch = resolveScopeReview(verdict.sufficient);
         if (verdict.scope) deal.scope = { ...deal.scope, ...verdict.scope };
         // consume the reply we just ran sufficiency on (persisted by stageDraft/stageProposal)
         deal.last_inbound_id = latest.id;
         deal.last_inbound_at = latest.receivedDateTime;
         if (branch.kind === 'STAGE_CLARIFY') {
-          return stageDraft(deal, branch.nextStage, verdict.clarifying_subject ?? `Re: ${latest.subject}`, verdict.clarifying_body_html ?? '', 'clarify_staged', deps, nowIso, latest);
+          const r = await stageDraft(deal, branch.nextStage, verdict.clarifying_subject ?? `Re: ${latest.subject}`, verdict.clarifying_body_html ?? '', 'clarify_staged', deps, nowIso, latest, att.note);
+          if (r && att.flags.length) r.newFlags = att.flags.length ? 1 : 0;
+          return r;
         }
         if (branch.kind === 'STAGE_PROPOSAL') {
-          return stageProposal(deal, deps, nowIso, latest, verdict);
+          const r = await stageProposal(deal, deps, nowIso, latest, verdict, att.note);
+          if (r && att.flags.length) r.newFlags = att.flags.length ? 1 : 0;
+          return r;
         }
       }
       if (deal.stage === 'PROPOSAL_SENT' && latest) {
@@ -272,17 +288,24 @@ async function advanceDeal(
     }
 
     case 'STAGE_SCOPING': {
+      const att = originating?.hasAttachments
+        ? await extractAttachmentText(deps, deal.last_inbound_id)
+        : { text: '', note: null, flags: [] };
+      if (att.flags.length) deal.flags.push(...att.flags.map((reason) => ({ ts: nowIso, message_id: deal.last_inbound_id, reason })));
       const scoped = await judge.scopeEnquiry({
         fromName: deal.contact_name,
         subject: originating?.subject ?? '',
         bodyPreview: originating?.body ?? '',
+        attachmentText: att.text || undefined,
       });
       deal.service_lines = scoped.service_lines;
       deal.scope = { ...deal.scope, ...scoped.scope, service_lines: scoped.service_lines };
       // For direct enquiries prefer the LLM-extracted company over the email-domain guess.
       // For forwarded enquiries the prospect's email domain is already set; don't override it.
       if (scoped.company?.trim() && deal.intake.source !== 'forwarded') deal.company = scoped.company.trim();
-      return stageDraft(deal, t.nextStage, scoped.draft_subject, scoped.draft_body_html, 'scoping_staged', deps, nowIso, null);
+      const draftResult = await stageDraft(deal, t.nextStage, scoped.draft_subject, scoped.draft_body_html, 'scoping_staged', deps, nowIso, null, att.note);
+      if (draftResult && att.flags.length) draftResult.newFlags = att.flags.length ? 1 : 0;
+      return draftResult;
     }
 
     case 'STAGE_FOLLOWUP': {
@@ -318,6 +341,7 @@ async function stageDraft(
   deps: LoopDeps,
   nowIso: string,
   latest: InboundMessage | null,
+  attachmentNote?: string | null,
 ): Promise<AdvanceResult | null> {
   const { config, graph, repo } = deps;
   if (!config.dryRun && (await graph.draftExistsInConversation(deal.deal_id))) {
@@ -327,17 +351,18 @@ async function stageDraft(
   const replyToMessageId = latest?.id ?? deal.last_inbound_id;
   const fwd = deal.intake.source === 'forwarded';
   const toProspect = fwd ? deal.intake.proposed_recipient : undefined;
+  const body = `${bodyHtml}${EMAIL_SIGN_OFF}`;
 
   let draftRef = '(dry-run — text below)';
   let recipientFlag = '';
   if (!config.dryRun) {
     if (toProspect) {
       const to = bodyDerivedRecipient(toProspect);
-      const draftId = await graph.createDraftToExternal(replyToMessageId, bodyHtml, to);
+      const draftId = await graph.createDraftToExternal(replyToMessageId, body, to);
       draftRef = `Outlook draft created (id ${draftId})`;
       recipientFlag = `\n:warning: Recipient \`${to}\` was extracted from a FORWARDED body — verify before sending. Forwarded by \`${deal.intake.forwarded_by ?? 'unknown'}\`.`;
     } else {
-      const draftId = await graph.createDraftReply(replyToMessageId, bodyHtml);
+      const draftId = await graph.createDraftReply(replyToMessageId, body);
       draftRef = `Outlook draft created (id ${draftId})`;
       if (fwd) recipientFlag = `\n:warning: Couldn't determine the prospect's address from the forward — set the recipient manually before sending.`;
     }
@@ -359,8 +384,9 @@ async function stageDraft(
     `Summary: ${subject}\n` +
     `Outlook draft: ${draftRef}${recipientFlag}\n` +
     `Approve by: sending the draft${nextStage === 'PO_PENDING_APPROVAL' ? '  |  replying SHIP-IT for HubSpot writes' : ''}\n` +
-    `Flags: ${deal.flags.length ? deal.flags.map((f) => f.reason).join(', ') : 'none'}\n\n` +
-    `> *Subject:* ${subject}\n> ${htmlToText(bodyHtml).slice(0, 1500)}`;
+    `Flags: ${deal.flags.length ? deal.flags.map((f) => f.reason).join(', ') : 'none'}\n` +
+    (attachmentNote ? `${attachmentNote}\n` : '') +
+    `\n> *Subject:* ${subject}\n> ${htmlToText(body).slice(0, 1500)}`;
 
   return { text, staged: true, advanced: false };
 }
@@ -371,6 +397,7 @@ async function stageProposal(
   nowIso: string,
   latest: InboundMessage | null,
   verdict: { assumptions: string[] },
+  attachmentNote?: string | null,
 ): Promise<AdvanceResult | null> {
   const { config, graph, repo, judge, deck, s3 } = deps;
   if (!config.dryRun && (await graph.draftExistsInConversation(deal.deal_id))) {
@@ -403,7 +430,7 @@ async function stageProposal(
     `It lists the assumptions we made so you can correct anything that's off. ` +
     `The deck contains the engagement overview and the commercials document contains pricing. ` +
     `Happy to walk through it on a short call.</p>` +
-    `<p>Best regards,<br/>Network Intelligence — Sales</p>`;
+    EMAIL_SIGN_OFF;
 
   let draftRef = `(dry-run — no draft; deck stored at ${deckUri})`;
   if (!config.dryRun) {
@@ -432,6 +459,7 @@ async function stageProposal(
     `Commercials: ${docxUri} (v${version})\n` +
     `Outlook draft: ${draftRef}\n` +
     `Approve by: sending the draft${priceFlag}\n` +
+    (attachmentNote ? `${attachmentNote}\n` : '') +
     `Assumptions: ${deal.assumptions.join('; ') || 'none'}`;
 
   return { text, staged: true, advanced: false };
@@ -466,6 +494,54 @@ function addBusinessDays(from: Date, days: number): Date {
   }
   return d;
 }
+interface AttachmentExtract { text: string; note: string | null; flags: string[] }
+
+/**
+ * Download + parse the allowed attachments on a message and return aggregated UNTRUSTED text.
+ * Never throws: any per-file failure degrades to a Slack note and is skipped. note=null when
+ * there was nothing worth mentioning.
+ */
+async function extractAttachmentText(deps: LoopDeps, messageId: string): Promise<AttachmentExtract> {
+  const { graph, deck } = deps;
+  let metas: AttachmentMeta[];
+  try {
+    metas = await graph.listAttachments(messageId);
+  } catch (err) {
+    logger.error('attachment_list_failed', { messageId, error: err instanceof Error ? err.message : String(err) });
+    return { text: '', note: null, flags: [] };
+  }
+
+  const parsedNames: string[] = [];
+  const skipped: string[] = [];
+  const blocks: string[] = [];
+  const flags: string[] = [];
+  let processed = 0;
+
+  for (const meta of metas) {
+    const decision = decideAttachment(meta);
+    if (!decision.parse) { skipped.push(`${meta.name} (${decision.reason})`); continue; }
+    if (processed >= MAX_FILES_PER_MESSAGE) { skipped.push(`${meta.name} (over ${MAX_FILES_PER_MESSAGE}-file limit)`); continue; }
+    processed++;
+    try {
+      const bytes = await graph.getAttachmentBytes(messageId, meta.id);
+      const result = await deck.parseAttachment({ name: meta.name, contentType: meta.contentType, bytes });
+      if (result.error || !result.text) { skipped.push(`${meta.name} (${result.error ?? 'no text extracted'})`); continue; }
+      blocks.push(`--- ${meta.name}${result.truncated ? ' (truncated)' : ''} ---\n${result.text}`);
+      parsedNames.push(meta.name);
+      for (const reason of scanForInjection(result.text)) if (!flags.includes(reason)) flags.push(reason);
+    } catch (err) {
+      logger.error('attachment_parse_failed', { messageId, name: meta.name, error: err instanceof Error ? err.message : String(err) });
+      skipped.push(`${meta.name} (download/parse error)`);
+    }
+  }
+
+  const noteParts: string[] = [];
+  if (parsedNames.length) noteParts.push(`:paperclip: Scope includes content extracted from attachment(s): ${parsedNames.join(', ')} — customer-provided, verify.`);
+  if (skipped.length) noteParts.push(`:warning: Attachment(s) not read (extract manually): ${skipped.join('; ')}.`);
+
+  return { text: blocks.join('\n\n'), note: noteParts.length ? noteParts.join('\n') : null, flags };
+}
+
 /** Strip HTML tags and decode the common entities so the Slack preview reads cleanly. */
 export function htmlToText(html: string): string {
   return html

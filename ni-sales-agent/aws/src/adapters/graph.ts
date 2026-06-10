@@ -1,3 +1,6 @@
+import type { AttachmentMeta } from '../gates/attachments.js';
+export type { AttachmentMeta };
+
 export interface GraphCreds {
   tenantId: string;
   clientId: string;
@@ -174,6 +177,39 @@ export class GraphClient {
         ...(contentType ? { contentType } : {}),
       }),
     });
+  }
+
+  /** List attachment METADATA on a message (no bytes). Used before the policy filter. */
+  async listAttachments(messageId: string): Promise<AttachmentMeta[]> {
+    const select = 'id,name,contentType,size,isInline';
+    const res = await this.call(
+      `/users/${this.box()}/messages/${encodeURIComponent(messageId)}/attachments?$select=${select}`,
+    );
+    const json = (await res.json()) as { value: Array<Partial<AttachmentMeta>> };
+    return json.value.map((a) => ({
+      id: a.id ?? '',
+      name: a.name ?? '',
+      contentType: a.contentType ?? '',
+      size: a.size ?? 0,
+      isInline: a.isInline ?? false,
+    }));
+  }
+
+  /**
+   * Download a fileAttachment's bytes. THIS REVERSES CLAUDE.md GATE #3 under the documented
+   * attachment-ingestion exception: only for a fileAttachment physically on a tracked-thread
+   * message, after the policy filter allowed it. Parsing happens in the zero-privilege worker
+   * and the extracted text is treated as untrusted. Grep this symbol to audit every download.
+   */
+  async getAttachmentBytes(messageId: string, attachmentId: string): Promise<Buffer> {
+    const res = await this.call(
+      `/users/${this.box()}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    );
+    const json = (await res.json()) as { '@odata.type'?: string; contentBytes?: string };
+    if (json['@odata.type'] !== '#microsoft.graph.fileAttachment' || !json.contentBytes) {
+      throw new Error(`attachment ${attachmentId} is not a file attachment (type ${json['@odata.type'] ?? 'unknown'})`);
+    }
+    return Buffer.from(json.contentBytes, 'base64');
   }
 }
 
