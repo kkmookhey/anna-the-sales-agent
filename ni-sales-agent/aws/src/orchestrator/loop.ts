@@ -97,7 +97,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
   const inbound = await graph.listInbound(deps.lastRunIso);
   const deals = await repo.listDeals();
   const byConversation = new Map(deals.map((d) => [d.deal_id, d]));
-  const originatingContext = new Map<string, { subject: string; body: string }>();
+  const originatingContext = new Map<string, { subject: string; body: string; hasAttachments: boolean }>();
   const stagingLines: string[] = [];
 
   const reviewLines: string[] = [];
@@ -157,7 +157,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
         : { source: 'direct', recipient_verified: true },
     };
     byConversation.set(fresh.deal_id, fresh);
-    originatingContext.set(fresh.deal_id, { subject: m.subject, body });
+    originatingContext.set(fresh.deal_id, { subject: m.subject, body, hasAttachments: m.hasAttachments });
   }
 
   for (const deal of byConversation.values()) {
@@ -200,7 +200,7 @@ async function advanceDeal(
   deal: Deal,
   deps: LoopDeps,
   nowIso: string,
-  originating: { subject: string; body: string } | null,
+  originating: { subject: string; body: string; hasAttachments: boolean } | null,
 ): Promise<AdvanceResult | null> {
   const { config, graph, slack, hubspot, judge, repo } = deps;
 
@@ -233,12 +233,12 @@ async function advanceDeal(
         deal.last_inbound_at = latest.receivedDateTime;
         if (branch.kind === 'STAGE_CLARIFY') {
           const r = await stageDraft(deal, branch.nextStage, verdict.clarifying_subject ?? `Re: ${latest.subject}`, verdict.clarifying_body_html ?? '', 'clarify_staged', deps, nowIso, latest, att.note);
-          if (r && att.flags.length) r.newFlags = att.flags.length;
+          if (r && att.flags.length) r.newFlags = att.flags.length ? 1 : 0;
           return r;
         }
         if (branch.kind === 'STAGE_PROPOSAL') {
           const r = await stageProposal(deal, deps, nowIso, latest, verdict, att.note);
-          if (r && att.flags.length) r.newFlags = att.flags.length;
+          if (r && att.flags.length) r.newFlags = att.flags.length ? 1 : 0;
           return r;
         }
       }
@@ -284,7 +284,9 @@ async function advanceDeal(
     }
 
     case 'STAGE_SCOPING': {
-      const att = await extractAttachmentText(deps, deal.last_inbound_id);
+      const att = originating?.hasAttachments
+        ? await extractAttachmentText(deps, deal.last_inbound_id)
+        : { text: '', note: null, flags: [] };
       if (att.flags.length) deal.flags.push(...att.flags.map((reason) => ({ ts: nowIso, message_id: deal.last_inbound_id, reason })));
       const scoped = await judge.scopeEnquiry({
         fromName: deal.contact_name,
@@ -298,7 +300,7 @@ async function advanceDeal(
       // For forwarded enquiries the prospect's email domain is already set; don't override it.
       if (scoped.company?.trim() && deal.intake.source !== 'forwarded') deal.company = scoped.company.trim();
       const draftResult = await stageDraft(deal, t.nextStage, scoped.draft_subject, scoped.draft_body_html, 'scoping_staged', deps, nowIso, null, att.note);
-      if (draftResult && att.flags.length) draftResult.newFlags = att.flags.length;
+      if (draftResult && att.flags.length) draftResult.newFlags = att.flags.length ? 1 : 0;
       return draftResult;
     }
 
