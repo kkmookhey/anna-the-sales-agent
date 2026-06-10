@@ -1,15 +1,10 @@
+import type { AttachmentMeta } from '../gates/attachments.js';
+export type { AttachmentMeta };
+
 export interface GraphCreds {
   tenantId: string;
   clientId: string;
   clientSecret: string;
-}
-
-export interface AttachmentMeta {
-  id: string;
-  name: string;
-  contentType: string;
-  size: number;
-  isInline: boolean;
 }
 
 export interface InboundMessage {
