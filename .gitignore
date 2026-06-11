@@ -12,6 +12,8 @@ assets/*.pptx
 .env.*
 *.env
 !.env.example
+App Password.html
+*App Password*.html
 
 # session memory & os cruft
 .remember/
