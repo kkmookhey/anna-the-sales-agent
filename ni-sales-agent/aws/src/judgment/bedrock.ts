@@ -27,6 +27,11 @@ export function extractJson(text: string): string {
   throw new Error('Model response contained no balanced JSON object');
 }
 
+/** System prompt for a retry after an invalid/truncated JSON response. */
+function retrySystem(system: string): string {
+  return `${system}\n\nYour previous response was not valid, complete JSON. Return EXACTLY one complete, fully-escaped JSON object and nothing else — no prose, no code fences.`;
+}
+
 export class BedrockJudge {
   constructor(
     private readonly client: BedrockRuntimeClient,
@@ -38,15 +43,40 @@ export class BedrockJudge {
   }
 
   async askJson<T>(system: string, userContext: string, maxTokens = 2000): Promise<T> {
-    const res = await this.client.send(
-      new ConverseCommand({
-        modelId: this.modelId,
-        system: [{ text: system }],
-        messages: [{ role: 'user', content: [{ text: userContext }] }],
-        inferenceConfig: { maxTokens, temperature: 0.2 },
-      }),
-    );
-    const text = res.output?.message?.content?.[0]?.text ?? '';
-    return JSON.parse(extractJson(text)) as T;
+    const MAX_ATTEMPTS = 2;
+    let tokens = maxTokens;
+    let sys = system;
+    let lastErr: unknown;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const isLast = attempt === MAX_ATTEMPTS - 1;
+      const res = await this.client.send(
+        new ConverseCommand({
+          modelId: this.modelId,
+          system: [{ text: sys }],
+          messages: [{ role: 'user', content: [{ text: userContext }] }],
+          inferenceConfig: { maxTokens: tokens, temperature: 0.2 },
+        }),
+      );
+      const text = res.output?.message?.content?.[0]?.text ?? '';
+
+      // A truncated response can't be parsed; retry with more room (unless this was the last try).
+      if (res.stopReason === 'max_tokens' && !isLast) {
+        lastErr = new Error('Model response truncated at max_tokens');
+        tokens *= 2;
+        sys = retrySystem(system);
+        continue;
+      }
+
+      try {
+        return JSON.parse(extractJson(text)) as T;
+      } catch (err) {
+        lastErr = err;
+        if (isLast) throw err;
+        tokens *= 2;
+        sys = retrySystem(system);
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
   }
 }

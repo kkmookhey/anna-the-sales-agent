@@ -53,6 +53,56 @@ describe('BedrockJudge.askJson maxTokens', () => {
   });
 });
 
+describe('BedrockJudge.askJson resilience', () => {
+  /** A client whose send returns each queued response in order. */
+  function sequencedClient(responses: Array<{ text: string; stopReason?: string }>) {
+    const send = vi.fn();
+    for (const r of responses) {
+      send.mockResolvedValueOnce({
+        output: { message: { content: [{ text: r.text }] } },
+        stopReason: r.stopReason,
+      });
+    }
+    return { send, judge: new BedrockJudge({ send } as never, 'model-x') };
+  }
+
+  it('retries once with a doubled budget when the first response is truncated', async () => {
+    const { send, judge } = sequencedClient([
+      { text: '{"a": 1', stopReason: 'max_tokens' },
+      { text: '{"a": 1}', stopReason: 'end_turn' },
+    ]);
+    const out = await judge.askJson<{ a: number }>('sys', 'ctx', 2000);
+    expect(out).toEqual({ a: 1 });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0].input.inferenceConfig.maxTokens).toBe(4000);
+  });
+
+  it('retries once when the first response is unparseable, then succeeds', async () => {
+    const { send, judge } = sequencedClient([
+      { text: 'sorry, here you go' },
+      { text: '{"ok": true}' },
+    ]);
+    const out = await judge.askJson<{ ok: boolean }>('sys', 'ctx');
+    expect(out).toEqual({ ok: true });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws after two failed attempts (no unbounded retry)', async () => {
+    const { send, judge } = sequencedClient([
+      { text: 'nope' },
+      { text: 'still nope' },
+    ]);
+    await expect(judge.askJson('sys', 'ctx')).rejects.toThrow(/no JSON/i);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry when the first response parses', async () => {
+    const { send, judge } = sequencedClient([{ text: '{"a": 1}' }]);
+    await judge.askJson('sys', 'ctx');
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('extractJson', () => {
   it('throws a clear error on truncated/unbalanced JSON', () => {
     expect(() => extractJson('{"a":1, "b":')).toThrow(/balanced JSON/);
