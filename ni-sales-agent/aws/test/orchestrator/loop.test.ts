@@ -331,6 +331,35 @@ describe('runLoop — PROPOSAL_SENT reply slice', () => {
     expect(deps.hubspot.createDeal).not.toHaveBeenCalled(); // not yet — needs SHIP-IT
   });
 
+  it('parks a PROPOSAL_SENT clarification reply when an unsent draft already exists', async () => {
+    const deps = baseDeps({});
+    (deps.judge.classifyProposalReply as ReturnType<typeof vi.fn>).mockResolvedValue({ kind: 'clarification' });
+    (deps.graph.draftExistsInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'PROPOSAL_SENT', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'm1', last_inbound_at: '2026-06-02T10:00:00Z', next_followup_date: null, followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, parked_at: null, actions: [], flags: [], intake: { source: 'direct', recipient_verified: true } },
+    ]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm2', conversationId: 'conv-1', subject: 'Re: Proposal', fromName: 'Shashank',
+      fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-03T09:00:00Z',
+      bodyPreview: 'one question', bodyFull: '<p>one question</p>', hasAttachments: false,
+    });
+
+    await runLoop(deps);
+
+    expect(deps.judge.draftFollowup).not.toHaveBeenCalled();
+    expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+    expect(stored.stage).toBe('PROPOSAL_SENT');
+    expect(stored.last_inbound_at).toBe('2026-06-02T10:00:00Z');
+    expect(stored.parked_at).toBe(deps.now.toISOString());
+  });
+
   it('PO_PENDING_APPROVAL + SHIP-IT in the stored thread writes the HubSpot deal and moves to WON', async () => {
     const deps = baseDeps({});
     (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);

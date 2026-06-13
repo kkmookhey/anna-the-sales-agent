@@ -254,10 +254,29 @@ async function advanceDeal(
       }
       if (deal.stage === 'PROPOSAL_SENT' && latest) {
         const { kind } = await judge.classifyProposalReply({ subject: latest.subject, reply: htmlToText(latest.bodyFull) });
+        const branch = resolveProposalReply(kind);
+
+        if (branch.kind === 'STAGE_FOLLOWUP') {
+          // A clarification reply would draft a follow-up. If an unsent draft is already on the
+          // thread, park instead of stacking one — leave the reply UNCONSUMED so we resume here.
+          const park = await parkIfDraftPending(deal, deps, nowIso);
+          if (park.parked) return park.line;
+          deal.parked_at = null;
+          deal.last_inbound_id = latest.id;
+          deal.last_inbound_at = latest.receivedDateTime;
+          const f = await judge.draftFollowup({
+            company: deal.company, contactName: deal.contact_name,
+            followupNumber: deal.followup_count + 1,
+            scopeSummary: deal.scope as unknown as Record<string, unknown>,
+          });
+          return stageDraft(deal, 'FOLLOWUP_PENDING_APPROVAL', f.draft_subject, f.draft_body_html, 'clarification_staged', deps, nowIso, latest);
+        }
+
+        // meeting / po / none never create an Outlook draft, so a pending draft does not block them.
+        deal.parked_at = null;
         // consume the reply so we don't reclassify it next run
         deal.last_inbound_id = latest.id;
         deal.last_inbound_at = latest.receivedDateTime;
-        const branch = resolveProposalReply(kind);
 
         if (branch.kind === 'ADVANCE' && branch.nextStage === 'MEETING_BOOKED') {
           const from = deal.stage;
@@ -268,14 +287,6 @@ async function advanceDeal(
         }
         if (branch.kind === 'ADVANCE' && branch.nextStage === 'PO_PENDING_APPROVAL') {
           return stagePoApproval(deal, deps, nowIso);
-        }
-        if (branch.kind === 'STAGE_FOLLOWUP') {
-          const f = await judge.draftFollowup({
-            company: deal.company, contactName: deal.contact_name,
-            followupNumber: deal.followup_count + 1,
-            scopeSummary: deal.scope as unknown as Record<string, unknown>,
-          });
-          return stageDraft(deal, 'FOLLOWUP_PENDING_APPROVAL', f.draft_subject, f.draft_body_html, 'clarification_staged', deps, nowIso, latest);
         }
         // kind === 'none' → record the consumed reply, no action
         await repo.putDeal(deal);
