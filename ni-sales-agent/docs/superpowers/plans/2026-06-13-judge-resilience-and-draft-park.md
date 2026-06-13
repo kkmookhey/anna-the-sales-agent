@@ -498,7 +498,7 @@ In `test/orchestrator/loop.test.ts`, replace the test body of `it('does not crea
     const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
     expect(stored.stage).toBe('SCOPE_REVIEW');
     expect(stored.last_inbound_at).toBe('2026-06-02T10:00:00Z');
-    expect(stored.parked_at).toBe('2026-06-02T15:00:00Z'); // deps.now
+    expect(stored.parked_at).toBe(deps.now.toISOString()); // '2026-06-02T15:00:00.000Z'
     const posted = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
     expect(posted).toMatch(/Parked/);
   });
@@ -653,7 +653,7 @@ Add to the `describe('runLoop — PROPOSAL_SENT reply slice', ...)` block in `te
     const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
     expect(stored.stage).toBe('PROPOSAL_SENT');
     expect(stored.last_inbound_at).toBe('2026-06-02T10:00:00Z');
-    expect(stored.parked_at).toBe('2026-06-02T15:00:00Z');
+    expect(stored.parked_at).toBe(deps.now.toISOString());
   });
 ```
 
