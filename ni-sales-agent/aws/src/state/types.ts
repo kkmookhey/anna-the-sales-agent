@@ -80,6 +80,7 @@ export interface Deal {
   scope: Scope;
   assumptions: string[];
   proposal: Proposal | null;
+  parked_at?: string | null; // ISO ts when the deal was parked on an unsent draft; null/absent when not parked
   actions: DealAction[];
   flags: DealFlag[];
   intake: {

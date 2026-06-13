@@ -41,7 +41,7 @@ export interface HubSpotPort {
 }
 export interface JudgePort {
   scopeEnquiry(i: { fromName: string; subject: string; bodyPreview: string; attachmentText?: string }): Promise<{ service_lines: string[]; draft_subject: string; draft_body_html: string; company: string; scope: Partial<Scope> }>;
-  assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string; attachmentText?: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string; scope?: Partial<Scope> }>;
+  assessSufficiency(i: { scopeSoFar: Record<string, unknown>; reply: string; attachmentText?: string }): Promise<{ sufficient: boolean; missing: string[]; assumptions: string[]; clarifying_subject?: string; clarifying_body_html?: string; scope_updates?: Partial<Scope> }>;
   draftFollowup(i: { company: string; contactName: string; followupNumber: number; scopeSummary: Record<string, unknown> }): Promise<{ draft_subject: string; draft_body_html: string }>;
   classifyInbound(i: { fromName: string; fromAddress: string; subject: string; body: string }): Promise<{ category: 'enquiry' | 'forwarded_enquiry' | 'not_enquiry'; original_sender?: { name: string; email: string }; confidence: 'high' | 'low'; reason: string }>;
   classifyProposalReply(i: { subject: string; reply: string }): Promise<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }>;
@@ -154,6 +154,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       scope: emptyScope(),
       assumptions: [],
       proposal: null,
+      parked_at: null,
       actions: [],
       flags: flags.map((reason) => ({ ts: nowIso, message_id: m.id, reason })),
       intake: forwarded
@@ -227,11 +228,16 @@ async function advanceDeal(
   switch (t.kind) {
     case 'NOOP': {
       if (deal.stage === 'SCOPE_REVIEW' && latest) {
+        // Both outcomes (clarify, proposal) create an Outlook draft. If an unsent draft is already
+        // on the thread, park instead of doing expensive judge work — leave the reply UNCONSUMED.
+        const park = await parkIfDraftPending(deal, deps, nowIso);
+        if (park.parked) return park.line;
+        deal.parked_at = null;
         const att = latest.hasAttachments ? await extractAttachmentText(deps, latest.id) : { text: '', note: null, flags: [] };
         if (att.flags.length) deal.flags.push(...att.flags.map((reason) => ({ ts: nowIso, message_id: latest.id, reason })));
         const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: htmlToText(latest.bodyFull), attachmentText: att.text || undefined });
         const branch = resolveScopeReview(verdict.sufficient);
-        if (verdict.scope) deal.scope = { ...deal.scope, ...verdict.scope };
+        if (verdict.scope_updates) deal.scope = { ...deal.scope, ...verdict.scope_updates };
         // consume the reply we just ran sufficiency on (persisted by stageDraft/stageProposal)
         deal.last_inbound_id = latest.id;
         deal.last_inbound_at = latest.receivedDateTime;
@@ -248,10 +254,29 @@ async function advanceDeal(
       }
       if (deal.stage === 'PROPOSAL_SENT' && latest) {
         const { kind } = await judge.classifyProposalReply({ subject: latest.subject, reply: htmlToText(latest.bodyFull) });
+        const branch = resolveProposalReply(kind);
+
+        if (branch.kind === 'STAGE_FOLLOWUP') {
+          // A clarification reply would draft a follow-up. If an unsent draft is already on the
+          // thread, park instead of stacking one — leave the reply UNCONSUMED so we resume here.
+          const park = await parkIfDraftPending(deal, deps, nowIso);
+          if (park.parked) return park.line;
+          deal.parked_at = null;
+          deal.last_inbound_id = latest.id;
+          deal.last_inbound_at = latest.receivedDateTime;
+          const f = await judge.draftFollowup({
+            company: deal.company, contactName: deal.contact_name,
+            followupNumber: deal.followup_count + 1,
+            scopeSummary: deal.scope as unknown as Record<string, unknown>,
+          });
+          return stageDraft(deal, 'FOLLOWUP_PENDING_APPROVAL', f.draft_subject, f.draft_body_html, 'clarification_staged', deps, nowIso, latest);
+        }
+
+        // meeting / po / none never create an Outlook draft, so a pending draft does not block them.
+        deal.parked_at = null;
         // consume the reply so we don't reclassify it next run
         deal.last_inbound_id = latest.id;
         deal.last_inbound_at = latest.receivedDateTime;
-        const branch = resolveProposalReply(kind);
 
         if (branch.kind === 'ADVANCE' && branch.nextStage === 'MEETING_BOOKED') {
           const from = deal.stage;
@@ -262,14 +287,6 @@ async function advanceDeal(
         }
         if (branch.kind === 'ADVANCE' && branch.nextStage === 'PO_PENDING_APPROVAL') {
           return stagePoApproval(deal, deps, nowIso);
-        }
-        if (branch.kind === 'STAGE_FOLLOWUP') {
-          const f = await judge.draftFollowup({
-            company: deal.company, contactName: deal.contact_name,
-            followupNumber: deal.followup_count + 1,
-            scopeSummary: deal.scope as unknown as Record<string, unknown>,
-          });
-          return stageDraft(deal, 'FOLLOWUP_PENDING_APPROVAL', f.draft_subject, f.draft_body_html, 'clarification_staged', deps, nowIso, latest);
         }
         // kind === 'none' → record the consumed reply, no action
         await repo.putDeal(deal);
@@ -330,6 +347,34 @@ async function advanceDeal(
     default:
       return null;
   }
+}
+
+/**
+ * If an unsent Outlook draft is already on the thread, the deal cannot create another draft —
+ * park it: leave the reply UNCONSUMED and the stage unchanged so it resumes once the human
+ * sends/discards the draft. `parked` tells the caller to stop; `line` is the one-time Slack
+ * notice (null on repeat parks and in dry-run, where no real draft is ever created).
+ */
+async function parkIfDraftPending(
+  deal: Deal,
+  deps: LoopDeps,
+  nowIso: string,
+): Promise<{ parked: boolean; line: AdvanceResult | null }> {
+  const { config, graph, repo } = deps;
+  if (config.dryRun) return { parked: false, line: null };
+  // A Graph error here surfaces as a per-deal error (logged + flagged in Slack) and recovers next run — intentional, not swallowed.
+  if (!(await graph.draftExistsInConversation(deal.deal_id))) return { parked: false, line: null };
+  if (deal.parked_at) return { parked: true, line: null }; // already notified — stay silent
+  deal.parked_at = nowIso;
+  await repo.putDeal(deal);
+  return {
+    parked: true,
+    line: {
+      text: `:hourglass_flowing_sand: *Parked* ${deal.company} (\`${deal.deal_id}\`): an unsent draft is already on this thread. Send or discard it before the agent can proceed.`,
+      staged: false,
+      advanced: false,
+    },
+  };
 }
 
 async function stageDraft(

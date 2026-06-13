@@ -33,8 +33,10 @@ describe('BedrockJudge', () => {
   });
 
   it('throws when no JSON object is present', async () => {
-    const judge = new BedrockJudge(fakeClient('sorry, no'), 'model-id');
+    const client = fakeClient('sorry, no');
+    const judge = new BedrockJudge(client, 'model-id');
     await expect(judge.askJson('sys', 'ctx')).rejects.toThrow(/no JSON/i);
+    expect((client.send as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -53,8 +55,90 @@ describe('BedrockJudge.askJson maxTokens', () => {
   });
 });
 
+describe('BedrockJudge.askJson resilience', () => {
+  /** A client whose send returns each queued response in order. */
+  function sequencedClient(responses: Array<{ text: string; stopReason?: string }>) {
+    const send = vi.fn();
+    for (const r of responses) {
+      send.mockResolvedValueOnce({
+        output: { message: { content: [{ text: r.text }] } },
+        stopReason: r.stopReason,
+      });
+    }
+    return { send, judge: new BedrockJudge({ send } as never, 'model-x') };
+  }
+
+  it('retries once with a doubled budget when the first response is truncated', async () => {
+    const { send, judge } = sequencedClient([
+      { text: '{"a": 1', stopReason: 'max_tokens' },
+      { text: '{"a": 1}', stopReason: 'end_turn' },
+    ]);
+    const out = await judge.askJson<{ a: number }>('sys', 'ctx', 2000);
+    expect(out).toEqual({ a: 1 });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0].input.inferenceConfig.maxTokens).toBe(4000);
+    expect(send.mock.calls[1][0].input.system[0].text).toMatch(/not valid, complete JSON/);
+  });
+
+  it('retries once when the first response is unparseable, then succeeds', async () => {
+    const { send, judge } = sequencedClient([
+      { text: 'sorry, here you go' },
+      { text: '{"ok": true}' },
+    ]);
+    const out = await judge.askJson<{ ok: boolean }>('sys', 'ctx');
+    expect(out).toEqual({ ok: true });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0].input.inferenceConfig.maxTokens).toBe(4000);
+    expect(send.mock.calls[1][0].input.system[0].text).toMatch(/not valid, complete JSON/);
+  });
+
+  it('throws after two failed attempts (no unbounded retry)', async () => {
+    const { send, judge } = sequencedClient([
+      { text: 'nope' },
+      { text: 'still nope' },
+    ]);
+    await expect(judge.askJson('sys', 'ctx')).rejects.toThrow(/no JSON/i);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws a truncation error when both attempts are truncated', async () => {
+    const { send, judge } = sequencedClient([
+      { text: '{"a": 1', stopReason: 'max_tokens' },
+      { text: '{"a": 1 again', stopReason: 'max_tokens' },
+    ]);
+    await expect(judge.askJson('sys', 'ctx')).rejects.toThrow(/truncated/i);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry when the first response parses', async () => {
+    const { send, judge } = sequencedClient([{ text: '{"a": 1}' }]);
+    await judge.askJson('sys', 'ctx');
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('extractJson', () => {
   it('throws a clear error on truncated/unbalanced JSON', () => {
     expect(() => extractJson('{"a":1, "b":')).toThrow(/balanced JSON/);
+  });
+
+  it('ignores braces that appear inside string values', () => {
+    const out = extractJson('{"a": "x } y { z", "b": 2}');
+    expect(JSON.parse(out)).toEqual({ a: 'x } y { z', b: 2 });
+  });
+
+  it('handles escaped quotes inside string values', () => {
+    const out = extractJson('{"msg": "she said \\"hi\\" }"}');
+    expect(JSON.parse(out)).toEqual({ msg: 'she said "hi" }' });
+  });
+
+  it('extracts a balanced object embedded in surrounding prose', () => {
+    const out = extractJson('result: {"html": "<div>{x}</div>"} done');
+    expect(JSON.parse(out)).toEqual({ html: '<div>{x}</div>' });
+  });
+
+  it('handles a literal backslash before a closing quote', () => {
+    const out = extractJson('{"path": "C:\\\\tmp\\\\"}');
+    expect(JSON.parse(out)).toEqual({ path: 'C:\\tmp\\' });
   });
 });
