@@ -42,13 +42,25 @@ describe('JudgmentService', () => {
 
   it('assessSufficiency returns a verdict with missing fields', async () => {
     const svc = new JudgmentService(
-      judgeReturning({ sufficient: false, missing: ['user roles'], assumptions: [], clarifying_subject: 'Re: VAPT', clarifying_body_html: '<p>One more thing</p>', scope: { asset_count: '10 API endpoints' } }),
+      judgeReturning({ sufficient: false, missing: ['user roles'], assumptions: [], clarifying_subject: 'Re: VAPT', clarifying_body_html: '<p>One more thing</p>', scope_updates: { asset_count: '10 API endpoints' } }),
     );
     const out = await svc.assessSufficiency({ scopeSoFar: {}, reply: 'we use AWS' });
     expect(out.sufficient).toBe(false);
     expect(out.missing).toContain('user roles');
-    expect(out.scope).toBeDefined();
-    expect(out.scope?.asset_count).toBe('10 API endpoints');
+    expect(out.scope_updates).toBeDefined();
+    expect(out.scope_updates?.asset_count).toBe('10 API endpoints');
+  });
+
+  describe('assessSufficiency contract', () => {
+    it('asks for an 8000-token budget and a scope_updates delta', async () => {
+      const askJson = vi.fn().mockResolvedValue({ sufficient: true, missing: [], assumptions: [], scope_updates: {} });
+      const svc = new JudgmentService({ askJson } as never);
+      await svc.assessSufficiency({ scopeSoFar: { asset_count: '10' }, reply: 'answers' });
+      const [system, , maxTokens] = askJson.mock.calls[0];
+      expect(maxTokens).toBe(8000);
+      expect(system).toMatch(/scope_updates/);
+      expect(system).toMatch(/only the scope fields this reply (adds|changes)/i);
+    });
   });
 
   it('classifyProposalReply returns the model\'s classification kind', async () => {

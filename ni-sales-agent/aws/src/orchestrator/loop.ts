@@ -231,7 +231,7 @@ async function advanceDeal(
         if (att.flags.length) deal.flags.push(...att.flags.map((reason) => ({ ts: nowIso, message_id: latest.id, reason })));
         const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: htmlToText(latest.bodyFull), attachmentText: att.text || undefined });
         const branch = resolveScopeReview(verdict.sufficient);
-        if (verdict.scope) deal.scope = { ...deal.scope, ...verdict.scope };
+        if (verdict.scope_updates) deal.scope = { ...deal.scope, ...verdict.scope_updates };
         // consume the reply we just ran sufficiency on (persisted by stageDraft/stageProposal)
         deal.last_inbound_id = latest.id;
         deal.last_inbound_at = latest.receivedDateTime;
