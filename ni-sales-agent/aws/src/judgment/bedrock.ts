@@ -7,7 +7,8 @@ export function extractJson(text: string): string {
   if (start === -1) throw new Error('Model response contained no JSON object');
   let depth = 0;
   let inString = false;
-  let escaped = false;
+  let escaped = false; // `escaped`/`inString` are only meaningful inside a string value
+  // indexOf('{') guarantees we start outside any string, so inString begins false
   for (let i = start; i < text.length; i++) {
     const c = text[i];
     if (inString) {

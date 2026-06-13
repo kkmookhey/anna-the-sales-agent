@@ -72,4 +72,9 @@ describe('extractJson', () => {
     const out = extractJson('result: {"html": "<div>{x}</div>"} done');
     expect(JSON.parse(out)).toEqual({ html: '<div>{x}</div>' });
   });
+
+  it('handles a literal backslash before a closing quote', () => {
+    const out = extractJson('{"path": "C:\\\\tmp\\\\"}');
+    expect(JSON.parse(out)).toEqual({ path: 'C:\\tmp\\' });
+  });
 });
