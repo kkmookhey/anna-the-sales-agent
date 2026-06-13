@@ -228,6 +228,11 @@ async function advanceDeal(
   switch (t.kind) {
     case 'NOOP': {
       if (deal.stage === 'SCOPE_REVIEW' && latest) {
+        // Both outcomes (clarify, proposal) create an Outlook draft. If an unsent draft is already
+        // on the thread, park instead of doing expensive judge work — leave the reply UNCONSUMED.
+        const park = await parkIfDraftPending(deal, deps, nowIso);
+        if (park.parked) return park.line;
+        deal.parked_at = null;
         const att = latest.hasAttachments ? await extractAttachmentText(deps, latest.id) : { text: '', note: null, flags: [] };
         if (att.flags.length) deal.flags.push(...att.flags.map((reason) => ({ ts: nowIso, message_id: latest.id, reason })));
         const verdict = await judge.assessSufficiency({ scopeSoFar: deal.scope as unknown as Record<string, unknown>, reply: htmlToText(latest.bodyFull), attachmentText: att.text || undefined });
@@ -331,6 +336,33 @@ async function advanceDeal(
     default:
       return null;
   }
+}
+
+/**
+ * If an unsent Outlook draft is already on the thread, the deal cannot create another draft —
+ * park it: leave the reply UNCONSUMED and the stage unchanged so it resumes once the human
+ * sends/discards the draft. `parked` tells the caller to stop; `line` is the one-time Slack
+ * notice (null on repeat parks and in dry-run, where no real draft is ever created).
+ */
+async function parkIfDraftPending(
+  deal: Deal,
+  deps: LoopDeps,
+  nowIso: string,
+): Promise<{ parked: boolean; line: AdvanceResult | null }> {
+  const { config, graph, repo } = deps;
+  if (config.dryRun) return { parked: false, line: null };
+  if (!(await graph.draftExistsInConversation(deal.deal_id))) return { parked: false, line: null };
+  if (deal.parked_at) return { parked: true, line: null }; // already notified — stay silent
+  deal.parked_at = nowIso;
+  await repo.putDeal(deal);
+  return {
+    parked: true,
+    line: {
+      text: `:hourglass_flowing_sand: *Parked* ${deal.company} (\`${deal.deal_id}\`): an unsent draft is already on this thread. Send or discard it before the agent can proceed.`,
+      staged: false,
+      advanced: false,
+    },
+  };
 }
 
 async function stageDraft(

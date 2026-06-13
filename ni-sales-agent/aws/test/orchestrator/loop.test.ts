@@ -552,7 +552,7 @@ describe('runLoop — idempotency guard', () => {
     }
   });
 
-  it('does not create a second proposal draft when one already exists on the thread', async () => {
+  it('parks a SCOPE_REVIEW deal when an unsent draft already exists, without running the judge', async () => {
     const deps = baseDeps({});
     (deps.graph.draftExistsInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(true);
     (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
@@ -562,7 +562,7 @@ describe('runLoop — idempotency guard', () => {
         last_inbound_id: 'm1', last_inbound_at: '2026-06-02T10:00:00Z', next_followup_date: null, followup_count: 0,
         scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
           timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
-        assumptions: [], proposal: null, actions: [], flags: [], intake: { source: 'direct', recipient_verified: true } },
+        assumptions: [], proposal: null, parked_at: null, actions: [], flags: [], intake: { source: 'direct', recipient_verified: true } },
     ]);
     (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 'm2', conversationId: 'conv-1', subject: 'Re: VAPT', fromName: 'Shashank',
@@ -572,8 +572,40 @@ describe('runLoop — idempotency guard', () => {
 
     await runLoop(deps);
 
+    expect(deps.judge.assessSufficiency).not.toHaveBeenCalled();
     expect(deps.judge.buildProposalContent).not.toHaveBeenCalled();
     expect(deps.deck.render).not.toHaveBeenCalled();
     expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
+
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+    expect(stored.stage).toBe('SCOPE_REVIEW');
+    expect(stored.last_inbound_at).toBe('2026-06-02T10:00:00Z');
+    expect(stored.parked_at).toBe(deps.now.toISOString());
+    const posted = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    expect(posted).toMatch(/Parked/);
+  });
+
+  it('stays silent on a repeat park (parked_at already set)', async () => {
+    const deps = baseDeps({});
+    (deps.graph.draftExistsInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'SCOPE_REVIEW', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'm1', last_inbound_at: '2026-06-02T10:00:00Z', next_followup_date: null, followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, parked_at: '2026-06-12T00:00:00Z', actions: [], flags: [], intake: { source: 'direct', recipient_verified: true } },
+    ]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm2', conversationId: 'conv-1', subject: 'Re: VAPT', fromName: 'Shashank',
+      fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-02T12:00:00Z',
+      bodyPreview: 'answers', bodyFull: '<p>answers</p>', hasAttachments: false,
+    });
+
+    await runLoop(deps);
+
+    expect(deps.judge.assessSufficiency).not.toHaveBeenCalled();
+    expect(deps.slack.postStaging).not.toHaveBeenCalled();
   });
 });
