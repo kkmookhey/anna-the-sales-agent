@@ -577,6 +577,7 @@ describe('runLoop — idempotency guard', () => {
     expect(deps.deck.render).not.toHaveBeenCalled();
     expect(deps.graph.createDraftReply).not.toHaveBeenCalled();
 
+    expect(deps.repo.putDeal).toHaveBeenCalledOnce();
     const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
     expect(stored.stage).toBe('SCOPE_REVIEW');
     expect(stored.last_inbound_at).toBe('2026-06-02T10:00:00Z');
@@ -607,5 +608,6 @@ describe('runLoop — idempotency guard', () => {
 
     expect(deps.judge.assessSufficiency).not.toHaveBeenCalled();
     expect(deps.slack.postStaging).not.toHaveBeenCalled();
+    expect(deps.repo.putDeal).not.toHaveBeenCalled();
   });
 });

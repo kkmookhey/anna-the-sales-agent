@@ -351,6 +351,7 @@ async function parkIfDraftPending(
 ): Promise<{ parked: boolean; line: AdvanceResult | null }> {
   const { config, graph, repo } = deps;
   if (config.dryRun) return { parked: false, line: null };
+  // A Graph error here surfaces as a per-deal error (logged + flagged in Slack) and recovers next run — intentional, not swallowed.
   if (!(await graph.draftExistsInConversation(deal.deal_id))) return { parked: false, line: null };
   if (deal.parked_at) return { parked: true, line: null }; // already notified — stay silent
   deal.parked_at = nowIso;
