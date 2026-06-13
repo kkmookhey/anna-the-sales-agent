@@ -60,9 +60,11 @@ export class BedrockJudge {
       );
       const text = res.output?.message?.content?.[0]?.text ?? '';
 
-      // A truncated response can't be parsed; retry with more room (unless this was the last try).
-      if (res.stopReason === 'max_tokens' && !isLast) {
+      // A truncated response can't be parsed. Retry with more room, or — if this was the last
+      // try — surface the truncation cause (clearer than the parse error it would otherwise throw).
+      if (res.stopReason === 'max_tokens') {
         lastErr = new Error('Model response truncated at max_tokens');
+        if (isLast) throw lastErr;
         tokens *= 2;
         sys = retrySystem(system);
         continue;
@@ -77,6 +79,7 @@ export class BedrockJudge {
         sys = retrySystem(system);
       }
     }
+    // Unreachable: every loop iteration returns, throws, or continues. Kept for the type checker.
     throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
   }
 }

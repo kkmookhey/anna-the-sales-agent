@@ -33,8 +33,10 @@ describe('BedrockJudge', () => {
   });
 
   it('throws when no JSON object is present', async () => {
-    const judge = new BedrockJudge(fakeClient('sorry, no'), 'model-id');
+    const client = fakeClient('sorry, no');
+    const judge = new BedrockJudge(client, 'model-id');
     await expect(judge.askJson('sys', 'ctx')).rejects.toThrow(/no JSON/i);
+    expect((client.send as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -75,6 +77,7 @@ describe('BedrockJudge.askJson resilience', () => {
     expect(out).toEqual({ a: 1 });
     expect(send).toHaveBeenCalledTimes(2);
     expect(send.mock.calls[1][0].input.inferenceConfig.maxTokens).toBe(4000);
+    expect(send.mock.calls[1][0].input.system[0].text).toMatch(/not valid, complete JSON/);
   });
 
   it('retries once when the first response is unparseable, then succeeds', async () => {
@@ -85,6 +88,8 @@ describe('BedrockJudge.askJson resilience', () => {
     const out = await judge.askJson<{ ok: boolean }>('sys', 'ctx');
     expect(out).toEqual({ ok: true });
     expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0].input.inferenceConfig.maxTokens).toBe(4000);
+    expect(send.mock.calls[1][0].input.system[0].text).toMatch(/not valid, complete JSON/);
   });
 
   it('throws after two failed attempts (no unbounded retry)', async () => {
@@ -93,6 +98,15 @@ describe('BedrockJudge.askJson resilience', () => {
       { text: 'still nope' },
     ]);
     await expect(judge.askJson('sys', 'ctx')).rejects.toThrow(/no JSON/i);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws a truncation error when both attempts are truncated', async () => {
+    const { send, judge } = sequencedClient([
+      { text: '{"a": 1', stopReason: 'max_tokens' },
+      { text: '{"a": 1 again', stopReason: 'max_tokens' },
+    ]);
+    await expect(judge.askJson('sys', 'ctx')).rejects.toThrow(/truncated/i);
     expect(send).toHaveBeenCalledTimes(2);
   });
 
