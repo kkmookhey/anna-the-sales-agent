@@ -20,3 +20,17 @@ describe('DealRepo intake back-compat', () => {
     expect(deal?.intake.proposed_recipient).toBe('p@co.com');
   });
 });
+
+describe('DealRepo parked_at back-compat', () => {
+  it('defaults parked_at to null when an older record lacks it', async () => {
+    const legacy = { deal_id: 'c3', stage: 'SCOPE_REVIEW', company: 'X' }; // no `parked_at`
+    const deal = await repoReturning(legacy).getDeal('c3');
+    expect(deal?.parked_at).toBeNull();
+  });
+
+  it('preserves a stored parked_at timestamp', async () => {
+    const parked = { deal_id: 'c4', parked_at: '2026-06-13T09:00:00Z' };
+    const deal = await repoReturning(parked).getDeal('c4');
+    expect(deal?.parked_at).toBe('2026-06-13T09:00:00Z');
+  });
+});

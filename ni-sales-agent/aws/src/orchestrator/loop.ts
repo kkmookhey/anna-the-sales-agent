@@ -154,6 +154,7 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
       scope: emptyScope(),
       assumptions: [],
       proposal: null,
+      parked_at: null,
       actions: [],
       flags: flags.map((reason) => ({ ts: nowIso, message_id: m.id, reason })),
       intake: forwarded

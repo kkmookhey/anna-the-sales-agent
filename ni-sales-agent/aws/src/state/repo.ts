@@ -20,6 +20,7 @@ export class DealRepo {
 
   private withDefaults(item: Deal): Deal {
     if (!item.intake) item.intake = { source: 'direct', recipient_verified: true };
+    if (item.parked_at === undefined) item.parked_at = null;
     return item;
   }
 
