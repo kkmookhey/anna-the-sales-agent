@@ -63,6 +63,15 @@ describe('JudgmentService', () => {
     });
   });
 
+  describe('scopeEnquiry budget', () => {
+    it('asks for an 8000-token budget', async () => {
+      const askJson = vi.fn().mockResolvedValue({ service_lines: [], draft_subject: '', draft_body_html: '', company: '', scope: {} });
+      const svc = new JudgmentService({ askJson } as never);
+      await svc.scopeEnquiry({ fromName: 'A', subject: 's', bodyPreview: 'b' });
+      expect(askJson.mock.calls[0][2]).toBe(8000);
+    });
+  });
+
   it('classifyProposalReply returns the model\'s classification kind', async () => {
     const svc = new JudgmentService(judgeReturning({ kind: 'po' }));
     const out = await svc.classifyProposalReply({ subject: 'Re: Proposal', reply: 'Approved — PO attached, please proceed.' });
