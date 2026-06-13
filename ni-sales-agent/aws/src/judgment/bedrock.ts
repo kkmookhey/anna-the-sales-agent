@@ -1,13 +1,24 @@
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 
-/** Pull the first balanced top-level JSON object out of a model response. */
+/** Pull the first balanced top-level JSON object out of a model response.
+ *  String-aware: braces inside quoted string values (and `\"` escapes) do not affect depth. */
 export function extractJson(text: string): string {
   const start = text.indexOf('{');
   if (start === -1) throw new Error('Model response contained no JSON object');
   let depth = 0;
+  let inString = false;
+  let escaped = false;
   for (let i = start; i < text.length; i++) {
-    if (text[i] === '{') depth++;
-    else if (text[i] === '}') {
+    const c = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === '{') depth++;
+    else if (c === '}') {
       depth--;
       if (depth === 0) return text.slice(start, i + 1);
     }

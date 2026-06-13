@@ -57,4 +57,19 @@ describe('extractJson', () => {
   it('throws a clear error on truncated/unbalanced JSON', () => {
     expect(() => extractJson('{"a":1, "b":')).toThrow(/balanced JSON/);
   });
+
+  it('ignores braces that appear inside string values', () => {
+    const out = extractJson('{"a": "x } y { z", "b": 2}');
+    expect(JSON.parse(out)).toEqual({ a: 'x } y { z', b: 2 });
+  });
+
+  it('handles escaped quotes inside string values', () => {
+    const out = extractJson('{"msg": "she said \\"hi\\" }"}');
+    expect(JSON.parse(out)).toEqual({ msg: 'she said "hi" }' });
+  });
+
+  it('extracts a balanced object embedded in surrounding prose', () => {
+    const out = extractJson('result: {"html": "<div>{x}</div>"} done');
+    expect(JSON.parse(out)).toEqual({ html: '<div>{x}</div>' });
+  });
 });
