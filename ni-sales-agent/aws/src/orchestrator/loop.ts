@@ -14,7 +14,7 @@ const escHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&
 
 /** Canonical sign-off appended to every outbound customer email (drafts + proposal cover).
  *  The LLM is told NOT to write its own sign-off; this is the single source of truth. */
-const EMAIL_SIGN_OFF = '<p>Best regards,<br/>Logan - NI Sales Agent</p>';
+const EMAIL_SIGN_OFF = '<p>Best regards,<br/>Anna · Network Intelligence</p>';
 
 export interface GraphPort {
   listInbound(sinceIso: string): Promise<InboundMessage[]>;
@@ -183,14 +183,14 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
 
   const board = renderPipelineBoard([...byConversation.values()], nowIso);
   const existingCanvasId = await repo.getMeta('canvas_id');
-  const canvasId = await slack.upsertCanvas(existingCanvasId, 'NI Sales — Pipeline', board);
+  const canvasId = await slack.upsertCanvas(existingCanvasId, 'Anna — Pipeline', board);
   if (!existingCanvasId) await repo.putMeta('canvas_id', canvasId);
 
   logger.info('run_done', { ...summary });
 
   const hasActivity = stagingLines.length > 0 || reviewLines.length > 0;
   if (hasActivity) {
-    const header = `:robot_face: *NI Sales Agent — run summary*${config.dryRun ? ' (dry-run)' : ''}\n` +
+    const header = `:robot_face: *Anna — run summary*${config.dryRun ? ' (dry-run)' : ''}\n` +
       `_${summary.processed} inbound · ${summary.staged} staged · ${summary.advanced} advanced · ` +
       `${summary.disqualified} disqualified · ${summary.flagged} flagged · ${summary.errors} errors_`;
     await slack.postStaging(config.slackChannelId, [header, ...stagingLines, ...reviewLines].join('\n\n'));

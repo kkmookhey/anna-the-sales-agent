@@ -20,3 +20,7 @@ App Password.html
 *.DS_Store
 .DS_Store
 *.zip
+
+# Generated proposal artifacts and cowork ledger (not source)
+ni-sales-agent/proposals/
+ni-sales-agent/cowork-state/

@@ -21,7 +21,7 @@ describe('renderPipelineBoard', () => {
       ],
       '2026-06-02T15:00:00Z',
     );
-    expect(md).toContain('# NI Sales — Pipeline');
+    expect(md).toContain('# Anna — Pipeline');
     expect(md).toContain('Awaiting scoping approval (1)');
     expect(md).toContain('Proposal sent (1)');
     expect(md).toContain('| Novelty Wealth |');

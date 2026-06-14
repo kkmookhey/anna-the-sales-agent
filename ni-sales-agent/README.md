@@ -1,4 +1,4 @@
-# NI Sales Agent (v1 prototype)
+# Anna — NI Sales Agent (v1 prototype)
 
 A semi-autonomous sales-enquiry agent for Network Intelligence. It watches a shared
 Outlook mailbox, scopes inbound enquiries, builds branded proposal decks, follows up,

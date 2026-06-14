@@ -1,4 +1,4 @@
-# NI Sales Agent — Deployment Runbook
+# Anna — Deployment Runbook
 
 **Status:** AWS account `331145994818`, region `ap-south-1`, profile `sara-sales`,
 CDK bootstrapped ✓, Bedrock model `global.anthropic.claude-sonnet-4-5-20250929-v1:0`

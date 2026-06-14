@@ -65,7 +65,7 @@ describe('runLoop — NEW enquiry slice', () => {
       expect.objectContaining({ subject: 'VAPT Enquiry', bodyPreview: expect.stringContaining('Android and iOS') }),
     );
     // The fixed signature is appended in code (LLM is told not to sign off).
-    expect(deps.graph.createDraftReply).toHaveBeenCalledWith('m1', '<p>Hi</p><p>Best regards,<br/>Logan - NI Sales Agent</p>');
+    expect(deps.graph.createDraftReply).toHaveBeenCalledWith('m1', '<p>Hi</p><p>Best regards,<br/>Anna · Network Intelligence</p>');
     expect(deps.slack.postStaging).toHaveBeenCalledOnce();
     expect(deps.repo.putDeal).toHaveBeenCalledOnce();
 
@@ -197,7 +197,7 @@ describe('runLoop — SCOPE_REVIEW proposal slice', () => {
     expect(deps.graph.createDraftReply).toHaveBeenCalledOnce();
     // Proposal cover carries the fixed signature, not the old "Network Intelligence — Sales".
     const coverBody = (deps.graph.createDraftReply as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
-    expect(coverBody).toContain('Logan - NI Sales Agent');
+    expect(coverBody).toContain('Anna · Network Intelligence');
     expect(coverBody).not.toContain('Network Intelligence — Sales');
     expect(deps.graph.addAttachment).toHaveBeenCalledTimes(2);
 

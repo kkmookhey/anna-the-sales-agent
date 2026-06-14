@@ -22,7 +22,7 @@ const LABEL: Record<Stage, string> = {
 };
 
 export function renderPipelineBoard(deals: Deal[], nowIso: string): string {
-  const lines: string[] = ['# NI Sales — Pipeline', '', `_Updated ${nowIso}_`, ''];
+  const lines: string[] = ['# Anna — Pipeline', '', `_Updated ${nowIso}_`, ''];
   let any = false;
   for (const stage of STAGE_ORDER) {
     const group = deals.filter((d) => d.stage === stage);
