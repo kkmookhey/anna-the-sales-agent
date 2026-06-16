@@ -9,6 +9,7 @@ import { isAutomatedSender } from './intake.js';
 import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
 import type { ProposalContent } from '../proposal/types.js';
+import { resolveEntity } from '../render/legal-entities.js';
 
 const escHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -58,7 +59,7 @@ export interface S3Port {
   put(key: string, body: Buffer, contentType?: string): Promise<string>;
 }
 export interface DeckPort {
-  render(content: ProposalContent): Promise<{ pdf: Buffer; docx: Buffer }>;
+  render(content: ProposalContent, entity?: import('../render/legal-entities.js').LegalEntity): Promise<{ pdf: Buffer; docx: Buffer }>;
   parseAttachment(file: { name: string; contentType: string; bytes: Buffer }): Promise<{ name: string; text: string; truncated: boolean; error?: string }>;
 }
 
@@ -459,8 +460,11 @@ async function stageProposal(
     assumptions: deal.assumptions,
   });
 
+  const region = (deal.scope as { region?: string | null }).region ?? null;
+  const { entity, defaulted } = resolveEntity(region);
+
   const version = (deal.proposal?.version ?? 0) + 1;
-  const { pdf, docx } = await deck.render(content);
+  const { pdf, docx } = await deck.render(content, entity);
   const slug = deal.company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   const pdfName = `${slug}-proposal-v${version}.pdf`;
   const docxName = `${slug}-commercials-v${version}.docx`;
@@ -493,17 +497,27 @@ async function stageProposal(
   });
   await repo.putDeal(deal);
 
-  const priceFlag =
-    content.commercials.mode === 'placeholder'
-      ? '\n:warning: Commercials are a PLACEHOLDER — a human must set pricing before sending.'
-      : '';
+  const flags: string[] = [];
+  if (content.commercials.mode === 'placeholder')
+    flags.push(':warning: Commercials are a PLACEHOLDER — a human must set pricing before sending.');
+  if (defaulted)
+    flags.push(`:round_pushpin: Billing entity DEFAULTED to ${entity.legalName} (region unknown) — confirm geo.`);
+  else
+    flags.push(`Billing entity: ${entity.legalName} (${entity.currency}).`);
+  if (entity.address.startsWith('['))
+    flags.push(':warning: Entity address is still a placeholder in commercials-content — confirm before send.');
+  if (content.effort.isLarge)
+    flags.push(`:large_blue_circle: ${content.effort.totalManDays} man-days — LARGE engagement (methodology deck candidate).`);
+  else
+    flags.push(`Effort: ${content.effort.totalManDays} man-days.`);
+  const flagText = flags.length ? `\n${flags.join('\n')}` : '';
   const text =
     `*[STAGING — proposal]* ${deal.company} / ${deal.contact_name}\n` +
     `Deal: \`${deal.deal_id}\`  Stage: ${from} → PROPOSAL_PENDING_APPROVAL\n` +
     `Deck: ${deckUri} (v${version})\n` +
     `Commercials: ${docxUri} (v${version})\n` +
     `Outlook draft: ${draftRef}\n` +
-    `Approve by: sending the draft${priceFlag}\n` +
+    `Approve by: sending the draft${flagText}\n` +
     (attachmentNote ? `${attachmentNote}\n` : '') +
     `Assumptions: ${deal.assumptions.join('; ') || 'none'}`;
 
