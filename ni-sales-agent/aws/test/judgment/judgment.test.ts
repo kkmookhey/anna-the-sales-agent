@@ -107,3 +107,20 @@ describe('JudgmentService', () => {
     expect(out.scopeRows[0]!.line).toBe('Mobile VAPT');
   });
 });
+
+describe('HTML body formatting rule', () => {
+  it('instructs HTML block structure in the scoping, clarification, and follow-up prompts', async () => {
+    const askJson = vi.fn().mockResolvedValue({});
+    const svc = new JudgmentService({ askJson } as never);
+    await svc.scopeEnquiry({ fromName: 'A', subject: 's', bodyPreview: 'b' });
+    await svc.assessSufficiency({ scopeSoFar: {}, reply: 'r' });
+    await svc.draftFollowup({ company: 'C', contactName: 'N', followupNumber: 1, scopeSummary: {} });
+    expect(askJson).toHaveBeenCalledTimes(3);
+    for (const call of askJson.mock.calls) {
+      const system = call[0] as string;
+      expect(system).toMatch(/valid HTML/);
+      expect(system).toMatch(/<ol><li>/);
+      expect(system).toMatch(/run-on paragraph/);
+    }
+  });
+});

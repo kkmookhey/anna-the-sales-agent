@@ -37,6 +37,14 @@ const NO_SIGN_OFF_RULE =
   '"Regards", and no sender name) — the signature is appended automatically. End the body with ' +
   'your final content sentence.';
 
+// Body fields are rendered as HTML email. The model otherwise sometimes formats with plain-text
+// newlines + literal "1." numbering, which email clients collapse into one run-on paragraph.
+const HTML_BODY_RULE =
+  'Every *_html body field MUST be valid HTML: wrap each paragraph in <p>…</p>, and render any list ' +
+  'of questions or points as <ol><li>…</li></ol> (use <ul> when not sequential). Use <strong> for labels. ' +
+  'NEVER rely on plain-text line breaks or literal "1."/"2." numbering for structure — email clients collapse ' +
+  'newlines, so a body without HTML block tags renders as one unreadable run-on paragraph.';
+
 export class JudgmentService {
   constructor(private readonly judge: BedrockJudge) {}
 
@@ -53,7 +61,7 @@ export class JudgmentService {
       'access_model, authority_signal, region — each a string, or null where not stated). ' +
       'Extract every scope detail the enquiry already states into `scope`. ' +
       'Do not infer the company from a free-email domain like gmail.com. ' +
-      NO_SIGN_OFF_RULE;
+      NO_SIGN_OFF_RULE + ' ' + HTML_BODY_RULE;
     return this.judge.askJson<ScopeResult>(
       system,
       JSON.stringify({
@@ -80,7 +88,7 @@ export class JudgmentService {
       'answerable from the captured scope plus this reply — OR when the prospect explicitly asks you to send ' +
       'the proposal and the core scope is answerable. Bias toward sufficient; only set false for a genuinely ' +
       'blocking, unassumable detail. ' +
-      NO_SIGN_OFF_RULE;
+      NO_SIGN_OFF_RULE + ' ' + HTML_BODY_RULE;
     return this.judge.askJson<SufficiencyResult>(
       system,
       JSON.stringify({
@@ -100,7 +108,7 @@ export class JudgmentService {
   }): Promise<FollowupResult> {
     const system = `${loadSkill('deal-followup')}\n\n${JSON_RULE}\n` +
       'Output keys: draft_subject (string), draft_body_html (string). ' +
-      NO_SIGN_OFF_RULE;
+      NO_SIGN_OFF_RULE + ' ' + HTML_BODY_RULE;
     return this.judge.askJson<FollowupResult>(system, JSON.stringify(input));
   }
 
