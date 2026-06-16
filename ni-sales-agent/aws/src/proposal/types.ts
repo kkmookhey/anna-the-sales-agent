@@ -14,6 +14,14 @@ export interface Signal { title: string; detail: string }
 export interface ApproachPhase { name: string; detail: string }
 export interface CtaStep { when: string; title: string; detail: string }
 
+export interface EffortLine { serviceLine: string; basis: string; manDays: number }
+export interface Effort {
+  lines: EffortLine[];
+  totalManDays: number;
+  aiLeverageNote: string;
+  isLarge: boolean; // totalManDays > 10 — Slice 2 methodology-deck trigger
+}
+
 export interface ProposalContent {
   company: string;
   contactName: string;
@@ -35,4 +43,5 @@ export interface ProposalContent {
   signals: Signal[];
   approachPhases: ApproachPhase[];
   ctaSteps: CtaStep[];
+  effort: Effort;
 }
