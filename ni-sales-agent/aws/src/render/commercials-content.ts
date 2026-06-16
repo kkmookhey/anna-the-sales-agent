@@ -1,14 +1,9 @@
 // DRAFT commercials boilerplate — KK / legal MUST review before any real send.
-export const PO_ENTITY = {
-  name: 'Network Intelligence Pvt. Ltd.',
-  address: '[ADDRESS — confirm billing entity address]',
-  gstin: '[GSTIN — confirm]',
-  pan: '[PAN — confirm]',
-};
+// Entity-specific data (name, address, tax id, payment terms, governing law) lives in
+// ./legal-entities.ts and is selected per customer geography. This file holds only the
+// clauses that are identical across all entities.
 
 export const VALIDITY_DAYS = 30;
-
-export const PAYMENT_TERMS = '50% on award, 50% on delivery of the final report. Net 30 days from invoice.';
 
 export const EXCLUSIONS = [
   'Remediation of identified vulnerabilities (advisory only).',
@@ -17,10 +12,11 @@ export const EXCLUSIONS = [
   'Any work outside the agreed scope, handled via a written change request.',
 ];
 
-export const TERMS = [
+// Shared clauses. The governing-law clause is appended per-entity from
+// LegalEntity.governingLaw by the commercials builder.
+export const BASE_TERMS = [
   'This proposal and its commercials are confidential and valid for the stated validity period.',
-  'Testing is performed against the agreed scope with the client\'s written authorisation.',
+  "Testing is performed against the agreed scope with the client's written authorisation.",
   'Findings are reported to the client; no data is disclosed to third parties.',
   'Liability is limited to the fees paid for the engagement.',
-  'Governing law and jurisdiction: India.',
 ];
