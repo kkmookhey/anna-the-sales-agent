@@ -187,22 +187,45 @@ export class JudgmentService {
       'signals ({title,detail}[] — environment facts: stack, surface, interfaces, timeline), ' +
       'approachPhases ({name,detail}[] — the ordered methodology phases for this engagement), ' +
       'ctaSteps ({when,title,detail}[] — exactly 3 next-step cards). ' +
+      'effort ({ lines: {serviceLine,basis,manDays:number}[], totalManDays:number, aiLeverageNote:string } — ' +
+      'one line per service line; estimate man-days assuming NI delivers heavily AI-AUGMENTED via the ' +
+      'Transilience platform (vulnerability prioritization, noise reduction, continuous exposure), so figures ' +
+      'are LOWER than pure-human delivery but remain credible: a focused web-app VAPT ~4-8 md, an external ' +
+      'network test ~3-6 md, a config/cloud review ~3-6 md per environment, a red-team ~10-20 md, a compliance ' +
+      'assessment ~8-15 md; scale by the asset_count and environments in scope. aiLeverageNote is ONE sentence ' +
+      'stating the AI-augmentation assumption). ' +
       'Populate `credentials` from the library (lead with PCI QSA, PCI PIN Assessor, CREST, HITRUST ' +
       'on technical engagements). Populate `transilienceEdge` only when it strengthens this case; ' +
       'otherwise return []. ' +
       'Keep titleLine SHORT — at most 6 words. It is the cover headline rendered very ' +
       'large, so a long title wraps and crowds the layout. ' +
       'Keep commercials.text to ONE short sentence — detailed pricing/terms live in a separate commercials document, not the deck.';
-    const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines'>>(
+    const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines' | 'effort'> & { effort?: unknown }>(
       system,
       JSON.stringify(input),
       8000,
     );
+    const rawEffort = (raw as { effort?: { lines?: unknown; aiLeverageNote?: string } }).effort;
+    const lines = Array.isArray(rawEffort?.lines)
+      ? (rawEffort!.lines as Array<{ serviceLine?: string; basis?: string; manDays?: number }>).map((l) => ({
+          serviceLine: String(l.serviceLine ?? ''),
+          basis: String(l.basis ?? ''),
+          manDays: Number(l.manDays) || 0,
+        }))
+      : [];
+    const totalManDays = lines.reduce((sum, l) => sum + l.manDays, 0);
+    const effort = {
+      lines,
+      totalManDays,
+      aiLeverageNote: String(rawEffort?.aiLeverageNote ?? ''),
+      isLarge: totalManDays > 10,
+    };
     return {
       company: input.company,
       contactName: input.contactName,
       serviceLines: input.serviceLines,
       ...raw,
+      effort,
     };
   }
 }
