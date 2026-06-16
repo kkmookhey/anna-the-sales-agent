@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { renderProposalHtml } from './template.js';
 import { htmlToPdf } from './pdf.js';
-import { buildCommercialsDocx } from './commercials.js';
+import { buildCommercialsLetterhead } from './commercials-letterhead.js';
+import { resolveEntity } from './legal-entities.js';
 import type { ProposalContent } from '../proposal/types.js';
 
 const content: ProposalContent = {
@@ -50,6 +51,12 @@ const content: ProposalContent = {
     { when: 'On award', title: 'Access & scope sign-off', detail: 'Share the test environment and credentials; lock the final page/module count and fee.' },
     { when: 'Immediately after', title: 'Audit start', detail: 'Testing begins at once; first report in ~2–3 weeks, with a re-audit after remediation.' },
   ],
+  effort: {
+    lines: [{ serviceLine: 'pentest_web', basis: '3 web apps', manDays: 7 }],
+    totalManDays: 7,
+    aiLeverageNote: 'Effort reflects AI-augmented delivery via the Transilience platform.',
+    isLarge: false,
+  },
   commercials: { mode: 'placeholder', text: 'Indicative pricing to be confirmed on a short scoping call.' },
   nextSteps: [],
 };
@@ -59,7 +66,7 @@ async function main(): Promise<void> {
   mkdirSync('out', { recursive: true });
   writeFileSync('out/sample-proposal.pdf', pdf);
   console.log(`Wrote out/sample-proposal.pdf (${pdf.length} bytes)`);
-  writeFileSync('out/sample-commercials.docx', await buildCommercialsDocx(content));
+  writeFileSync('out/sample-commercials.docx', await buildCommercialsLetterhead(content, resolveEntity('UAE').entity));
   console.log('Wrote out/sample-commercials.docx');
 }
 main();
