@@ -1,10 +1,11 @@
 import type { ProposalContent } from '../proposal/types.js';
 import { renderProposalHtml } from './template.js';
 import { htmlToPdf } from './pdf.js';
-import { buildCommercialsDocx } from './commercials.js';
+import { buildCommercialsLetterhead } from './commercials-letterhead.js';
+import { resolveEntity, type LegalEntity } from './legal-entities.js';
 import { parseDocument, type ParseResult } from './parse.js';
 
-export interface RenderEvent { content: ProposalContent }
+export interface RenderEvent { content: ProposalContent; entity?: LegalEntity }
 export interface RenderResult { pdfBase64: string; docxBase64: string }
 
 export interface ParseEvent {
@@ -26,9 +27,10 @@ export async function handler(event: WorkerEvent): Promise<RenderResult | ParseR
   }
   // Default: render (backward compatible with existing { content } invocations).
   if (!event?.content) throw new Error('render: missing content');
+  const entity = event.entity ?? resolveEntity(null).entity; // default India if caller omitted
   const [pdf, docx] = await Promise.all([
     htmlToPdf(renderProposalHtml(event.content)),
-    buildCommercialsDocx(event.content),
+    buildCommercialsLetterhead(event.content, entity),
   ]);
   return { pdfBase64: pdf.toString('base64'), docxBase64: docx.toString('base64') };
 }
