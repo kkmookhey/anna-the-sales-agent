@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { JudgmentService } from '../../src/judgment/judgment.js';
+import type { BedrockJudge } from '../../src/judgment/bedrock.js';
 
-function fakeJudge(payload: unknown) {
+function fakeJudge(payload: unknown): BedrockJudge {
   // Minimal BedrockJudge stand-in: askJson returns the canned payload.
-  return { askJson: async () => payload } as any;
+  return { askJson: async () => payload } as unknown as BedrockJudge;
 }
 
 const baseRaw = {

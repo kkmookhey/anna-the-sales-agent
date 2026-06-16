@@ -50,8 +50,9 @@ const INDIA: LegalEntity = {
   signatory: 'For and on behalf of Network Intelligence Pvt. Ltd.',
 };
 
-// Keyword buckets matched case-insensitively against the free-text region string.
-const US_KEYS = ['united states', 'usa', ' us', 'us ', 'u.s', 'america', 'canada', 'uk', 'united kingdom',
+// Keyword buckets matched against the free-text region string on WORD boundaries
+// (so short tokens like "us"/"eu"/"uk" don't false-positive inside "belarus"/"prussia").
+const US_KEYS = ['united states', 'usa', 'us', 'u.s', 'america', 'canada', 'uk', 'united kingdom',
   'britain', 'england', 'europe', 'european', 'eu', 'eea', 'germany', 'france', 'netherlands', 'ireland',
   'spain', 'italy', 'belgium', 'sweden', 'norway', 'denmark', 'finland', 'switzerland', 'poland', 'portugal', 'austria'];
 const MEA_KEYS = ['uae', 'u.a.e', 'emirates', 'dubai', 'abu dhabi', 'sharjah', 'ksa', 'saudi', 'qatar', 'doha',
@@ -60,8 +61,13 @@ const MEA_KEYS = ['uae', 'u.a.e', 'emirates', 'dubai', 'abu dhabi', 'sharjah', '
 const INDIA_KEYS = ['india', 'indian', 'bharat', 'mumbai', 'delhi', 'bengaluru', 'bangalore', 'hyderabad',
   'chennai', 'pune', 'kolkata', 'gurgaon', 'gurugram', 'noida'];
 
+// A keyword matches when it appears delimited by a non-alphanumeric boundary (or string
+// edge). Keys may contain regex metacharacters (e.g. the dots in "u.s"), so escape them.
 function matches(hay: string, keys: string[]): boolean {
-  return keys.some((k) => hay.includes(k));
+  return keys.some((k) => {
+    const esc = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`, 'i').test(hay);
+  });
 }
 
 /**
@@ -70,10 +76,10 @@ function matches(hay: string, keys: string[]): boolean {
  * so the orchestrator can flag it for human geo confirmation.
  */
 export function resolveEntity(region: string | null | undefined): { entity: LegalEntity; defaulted: boolean } {
-  const hay = ` ${(region ?? '').toLowerCase().trim()} `;
-  if (hay.trim() && matches(hay, US_KEYS)) return { entity: US, defaulted: false };
-  if (hay.trim() && matches(hay, MEA_KEYS)) return { entity: MEA, defaulted: false };
-  if (hay.trim() && matches(hay, INDIA_KEYS)) return { entity: INDIA, defaulted: false };
+  const hay = (region ?? '').toLowerCase().trim();
+  if (hay && matches(hay, US_KEYS)) return { entity: US, defaulted: false };
+  if (hay && matches(hay, MEA_KEYS)) return { entity: MEA, defaulted: false };
+  if (hay && matches(hay, INDIA_KEYS)) return { entity: INDIA, defaulted: false };
   return { entity: INDIA, defaulted: true };
 }
 

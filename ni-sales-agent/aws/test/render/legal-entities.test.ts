@@ -41,4 +41,13 @@ describe('resolveEntity', () => {
       expect(defaulted).toBe(true);
     }
   });
+
+  it('does not false-positive a short token inside a longer word', () => {
+    // "Belarus" ends in "us" but must NOT resolve to the US entity (word-boundary match).
+    for (const r of ['Belarus', 'Prussia', 'Mauritius']) {
+      const { entity, defaulted } = resolveEntity(r);
+      expect(entity.key).toBe('india');
+      expect(defaulted).toBe(true);
+    }
+  });
 });
