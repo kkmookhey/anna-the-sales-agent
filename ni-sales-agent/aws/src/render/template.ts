@@ -1,5 +1,5 @@
 import type { ProposalContent } from '../proposal/types.js';
-import { esc, logoMark, head, foot, STYLE, type SlideDesc, assembleSlides, wrapDeck } from './deck-shared.js';
+import { esc, logoMark, type SlideDesc, assembleSlides, wrapDeck } from './deck-shared.js';
 import { serviceLineLabel } from './labels.js';
 
 // ─────────────────────────────────────────────
