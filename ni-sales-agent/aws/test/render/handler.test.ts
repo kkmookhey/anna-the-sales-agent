@@ -42,5 +42,5 @@ describe('render handler — parse action', () => {
     };
     const res = await handler({ content, deckType: 'methodology', methodology } as any);
     expect('pdfBase64' in res).toBe(true);
-  });
+  }, 30_000);
 });

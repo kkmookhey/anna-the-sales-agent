@@ -3,6 +3,7 @@ import { renderProposalHtml } from './template.js';
 import { htmlToPdf } from './pdf.js';
 import { buildCommercialsLetterhead } from './commercials-letterhead.js';
 import { resolveEntity } from './legal-entities.js';
+import { renderMethodologyHtml } from './methodology-template.js';
 import type { ProposalContent } from '../proposal/types.js';
 
 const content: ProposalContent = {
@@ -57,6 +58,7 @@ const content: ProposalContent = {
     aiLeverageNote: 'Effort reflects AI-augmented delivery via the Transilience platform.',
     isLarge: false,
   },
+  rfp: false,
   commercials: { mode: 'placeholder', text: 'Indicative pricing to be confirmed on a short scoping call.' },
   nextSteps: [],
 };
@@ -68,5 +70,51 @@ async function main(): Promise<void> {
   console.log(`Wrote out/sample-proposal.pdf (${pdf.length} bytes)`);
   writeFileSync('out/sample-commercials.docx', await buildCommercialsLetterhead(content, resolveEntity('UAE').entity));
   console.log('Wrote out/sample-commercials.docx');
+
+  // ── Methodology deck sample (Slice 2) ──────────────────────────────
+  const mContent = {
+    ...content,
+    serviceLines: ['pentest_web', 'pentest_api', 'pentest_network'],
+    effort: {
+      lines: [
+        { serviceLine: 'pentest_web', basis: '3 web apps', manDays: 8 },
+        { serviceLine: 'pentest_api', basis: '1 API', manDays: 5 },
+        { serviceLine: 'pentest_network', basis: '/24 range', manDays: 6 },
+      ],
+      totalManDays: 19,
+      aiLeverageNote: 'Effort reflects AI-augmented delivery via the Transilience platform.',
+      isLarge: true,
+    },
+    rfp: true,
+  };
+  const methodology = {
+    operatingLoop: [
+      { name: 'Assess', detail: 'Understand the environment, threats and regulatory drivers.' },
+      { name: 'Implement', detail: 'Execute the methodology — test, exploit and validate.' },
+      { name: 'Evolve', detail: 'Feed findings into continuous exposure management via Transilience.' },
+    ],
+    services: [
+      { serviceLine: 'pentest_web', phases: [{ name: 'Reconnaissance & mapping', detail: 'Crawl and fingerprint the surface.' }, { name: 'Reporting & retest', detail: 'Risk-rated findings, then a verification retest.' }], frameworks: ['OWASP WSTG', 'OWASP ASVS', 'PTES'], tooling: ['Burp Suite Pro', 'nuclei', 'Transilience triage'], aiAugmentation: 'Transilience compresses ~16k raw signals to ~10 prioritized actions.' },
+      { serviceLine: 'pentest_api', phases: [{ name: 'Spec & endpoint discovery', detail: 'Parse OpenAPI and enumerate endpoints.' }, { name: 'AuthN / AuthZ', detail: 'BOLA, BFLA and token handling.' }], frameworks: ['OWASP API Security Top 10', 'PTES'], tooling: ['Burp Suite Pro', 'Postman'], aiAugmentation: 'Findings are de-duplicated and prioritized by exploitability.' },
+      { serviceLine: 'pentest_network', phases: [{ name: 'Discovery & enumeration', detail: 'Host and service discovery.' }, { name: 'Exploitation', detail: 'Controlled exploitation to prove impact.' }], frameworks: ['NIST SP 800-115', 'MITRE ATT&CK', 'OSSTMM'], tooling: ['Nmap', 'Nessus', 'Metasploit'], aiAugmentation: 'Lateral-movement paths are prioritized by blast radius.' },
+    ],
+    aiHighlights: [
+      { stat: '16k→10', label: 'raw findings to prioritized actions' },
+      { stat: '95%', label: 'prioritization accuracy' },
+      { stat: '~80%', label: 'alert-investigation effort cut' },
+    ],
+    crosswalk: [
+      { area: 'Web application', frameworks: ['OWASP WSTG', 'OWASP ASVS'], evidence: 'Risk-rated report + retest' },
+      { area: 'Network & infrastructure', frameworks: ['NIST SP 800-115', 'MITRE ATT&CK'], evidence: 'Exploitation evidence + remediation' },
+    ],
+    timeline: [
+      { day: 'Day 1', milestone: 'Kickoff, scope confirmation, rules of engagement' },
+      { day: 'Day 10', milestone: 'Testing complete; draft findings shared' },
+      { day: 'Day 19', milestone: 'Final report + readout; retest scheduled' },
+    ],
+    exclusions: ['Remediation of identified issues (advisory only).', 'Testing of third-party systems not owned by the client.'],
+  };
+  writeFileSync('out/sample-methodology.pdf', await htmlToPdf(renderMethodologyHtml(mContent as any, methodology as any)));
+  console.log('wrote out/sample-methodology.pdf');
 }
 main();
