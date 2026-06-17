@@ -949,6 +949,57 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 .cta-num { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.22em; color: #FCE205; text-transform: uppercase; }
 .cta-title { font-family: var(--font-display); font-size: 26px; font-weight: 500; color: #fff; margin: 0; letter-spacing: -0.005em; }
 .cta-card p { font-family: var(--font-body); font-size: 15px; line-height: 1.5; color: rgba(255,255,255,0.7); margin: 0; }
+
+/* ── Methodology diagram components (Slice 2) ───────────────────────── */
+.flow-band { display:flex; gap:0; align-items:stretch; margin-top:40px; }
+.flow-step { flex:1; position:relative; padding:24px 22px; background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.10); }
+.flow-step + .flow-step { border-left:none; }
+.flow-step .flow-num { font-family:var(--font-mono); font-size:12px; letter-spacing:0.18em;
+  text-transform:uppercase; color:#FCE205; }
+.flow-step .flow-name { font-family:var(--font-display); font-size:21px; font-weight:500; color:#fff; margin:8px 0 6px; }
+.flow-step .flow-detail { font-family:var(--font-body); font-size:14px; line-height:1.45; color:rgba(255,255,255,0.7); margin:0; }
+
+.coverage-table { width:100%; border-collapse:collapse; margin-top:32px; font-family:var(--font-body); }
+.coverage-table th { text-align:left; font-family:var(--font-display); font-size:12px; letter-spacing:0.16em;
+  text-transform:uppercase; color:rgba(10,10,11,0.5); padding:12px 16px; border-bottom:2px solid rgba(10,10,11,0.15); }
+.coverage-table td { font-size:16px; color:#3a3a40; padding:16px; border-bottom:1px solid rgba(10,10,11,0.08); vertical-align:top; }
+
+.fw-tag { display:inline-block; font-family:var(--font-mono); font-size:12px; letter-spacing:0.04em;
+  color:#582A90; background:rgba(88,42,144,0.08); border:1px solid rgba(88,42,144,0.25);
+  border-radius:6px; padding:3px 9px; margin:3px 6px 3px 0; }
+.fw-tag.fw-tag-dark { color:#E7D9FF; background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.18); }
+
+.badge { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px;
+  letter-spacing:0.14em; text-transform:uppercase; border-radius:999px; padding:4px 12px; }
+.badge-in-scope { color:#0A0A0B; background:#FCE205; }
+.badge-critical { color:#fff; background:#B61A3F; }
+.badge-live { color:#0A0A0B; background:#7FD17F; }
+
+.crosswalk-matrix { width:100%; border-collapse:collapse; margin-top:32px; }
+.crosswalk-matrix th, .crosswalk-matrix td { padding:14px 16px; border:1px solid rgba(255,255,255,0.12);
+  font-family:var(--font-body); font-size:15px; color:rgba(255,255,255,0.85); vertical-align:top; text-align:left; }
+.crosswalk-matrix th { font-family:var(--font-display); font-size:12px; letter-spacing:0.14em;
+  text-transform:uppercase; color:#FCE205; background:rgba(255,255,255,0.03); }
+
+.kill-chain { display:flex; gap:10px; margin-top:36px; }
+.kill-stage { flex:1; text-align:center; padding:18px 12px; border-radius:10px;
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12);
+  font-family:var(--font-display); font-size:16px; font-weight:500; color:#fff; }
+
+.funnel { display:flex; align-items:center; gap:28px; margin-top:36px; }
+.funnel-figure { font-family:var(--font-display); font-weight:600; line-height:0.9; }
+.funnel-from { font-size:64px; color:rgba(255,255,255,0.45); }
+.funnel-arrow { font-size:40px; color:#FCE205; }
+.funnel-to { font-size:96px; color:#FCE205; }
+.funnel-label { font-family:var(--font-display); font-size:18px; color:rgba(255,255,255,0.8); max-width:420px; }
+
+.day-timeline { margin-top:32px; border-left:2px solid rgba(10,10,11,0.15); padding-left:28px; }
+.day-row { position:relative; padding:14px 0; }
+.day-row::before { content:''; position:absolute; left:-35px; top:20px; width:12px; height:12px; border-radius:50%;
+  background:#B61A3F; }
+.day-row .day-mark { font-family:var(--font-mono); font-size:13px; letter-spacing:0.12em; color:#582A90; }
+.day-row .day-text { font-family:var(--font-body); font-size:18px; color:#0A0A0B; margin:4px 0 0; }
 `;
 export const DECK_STAGE_JS = `/**
  * <deck-stage> — reusable web component for HTML decks.

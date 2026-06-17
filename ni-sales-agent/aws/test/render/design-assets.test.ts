@@ -18,4 +18,12 @@ describe('design-system generated assets', () => {
     expect(A.LUCIDE_JS.length).toBeGreaterThan(1000);
     expect(A.LOGO_MARK_SVG).toContain('<svg');
   });
+  it('inlines the Slice 2 methodology diagram components', () => {
+    expect(A.PROPOSAL_CSS).toContain('.flow-band');
+    expect(A.PROPOSAL_CSS).toContain('.coverage-table');
+    expect(A.PROPOSAL_CSS).toContain('.crosswalk-matrix');
+    expect(A.PROPOSAL_CSS).toContain('.funnel');
+    expect(A.PROPOSAL_CSS).toContain('.day-timeline');
+    expect(A.PROPOSAL_CSS).toContain('.fw-tag');
+  });
 });
