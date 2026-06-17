@@ -1,6 +1,7 @@
 import type { BedrockJudge } from './bedrock.js';
 import { loadSkill, loadContent } from './skills.js';
-import type { ProposalContent } from '../proposal/types.js';
+import type { ProposalContent, MethodologyContent } from '../proposal/types.js';
+import { methodologyFor, ADVISE_LOOP } from '../render/methodology-library.js';
 import type { Scope } from '../state/types.js';
 
 export interface ScopeResult {
@@ -230,6 +231,53 @@ export class JudgmentService {
       ...raw,
       effort,
       rfp,
+    };
+  }
+
+  async buildMethodologyContent(input: {
+    company: string;
+    contactName: string;
+    serviceLines: string[];
+    scope: Record<string, unknown>;
+    effortLines: { serviceLine: string; basis: string; manDays: number }[];
+    totalManDays: number;
+  }): Promise<MethodologyContent> {
+    // Ground the model with ONLY the curated library entries for the in-scope lines.
+    const library = input.serviceLines.map((k) => methodologyFor(k));
+    const system =
+      'You assemble the in-depth METHODOLOGY content for a large/RFP cybersecurity proposal. ' +
+      'You are a senior offensive-security architect. ' +
+      `${JSON_RULE}\n` +
+      'GROUNDING: use ONLY the framework names, phases and tools present in the provided library subset ' +
+      'and operating loop. NEVER invent a framework, standard, or tool not listed. Tailor the wording to ' +
+      "this engagement's scope, but keep every framework/tool name verbatim from the library.\n" +
+      'Output keys: operatingLoop ({name,detail}[] — tailor the provided ADVISE loop to this engagement), ' +
+      'services ({serviceLine, phases:{name,detail}[], frameworks:string[], tooling:string[], aiAugmentation:string}[] — ' +
+      'ONE entry per in-scope service line, drawn from its library entry), ' +
+      'aiHighlights ({stat,label}[] — 3 Transilience metrics, e.g. {stat:"16k→10",label:"raw findings to prioritized actions"}, ' +
+      '{stat:"95%",label:"prioritization accuracy"}, {stat:"~80%",label:"alert-investigation effort cut"}), ' +
+      'crosswalk ({area, frameworks:string[], evidence:string}[] — map each engagement area to the frameworks it ' +
+      'satisfies and the evidence produced), ' +
+      'timeline ({day,milestone}[] — a day-by-day plan spread across the total man-days), ' +
+      'exclusions (string[] — what is deliberately out of scope).';
+    const payload = {
+      company: input.company,
+      contact: input.contactName,
+      scope: input.scope,
+      effort_lines: input.effortLines,
+      total_man_days: input.totalManDays,
+      library_subset: library,
+      operating_loop: ADVISE_LOOP,
+    };
+    const raw = await this.judge.askJson<Partial<MethodologyContent>>(system, JSON.stringify(payload), 8000);
+    const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+    return {
+      operatingLoop: arr(raw.operatingLoop),
+      services: arr(raw.services),
+      aiHighlights: arr(raw.aiHighlights),
+      crosswalk: arr(raw.crosswalk),
+      timeline: arr(raw.timeline),
+      exclusions: arr(raw.exclusions),
     };
   }
 }
