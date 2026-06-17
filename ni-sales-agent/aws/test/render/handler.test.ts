@@ -27,4 +27,20 @@ describe('render handler — parse action', () => {
     const res = await handler({ action: 'parse' } as never);
     expect('error' in res && res.error).toBeTruthy();
   });
+
+  it('routes methodology deckType through the methodology template', async () => {
+    const content: any = {
+      company: 'X', contactName: 'Y', serviceLines: ['pentest_web'], titleLine: 'T',
+      understanding: [], scopeRows: [], assumptions: [], approach: [], deliverables: [], timeline: '',
+      whyNi: [], credentials: [], transilienceEdge: [], commercials: { mode: 'placeholder', text: '' },
+      nextSteps: [], understandingStats: [], pillars: [], signals: [], approachPhases: [], ctaSteps: [],
+      effort: { lines: [], totalManDays: 12, aiLeverageNote: '', isLarge: true }, rfp: true,
+    };
+    const methodology: any = {
+      operatingLoop: [{ name: 'Assess', detail: 'd' }], services: [], aiHighlights: [],
+      crosswalk: [], timeline: [], exclusions: [],
+    };
+    const res = await handler({ content, deckType: 'methodology', methodology } as any);
+    expect('pdfBase64' in res).toBe(true);
+  });
 });

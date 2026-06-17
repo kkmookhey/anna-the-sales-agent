@@ -1,5 +1,5 @@
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
-import type { ProposalContent } from '../proposal/types.js';
+import type { ProposalContent, MethodologyContent } from '../proposal/types.js';
 import type { LegalEntity } from '../render/legal-entities.js';
 
 export interface ParsedAttachment { name: string; text: string; truncated: boolean; error?: string }
@@ -14,10 +14,15 @@ export class RenderClient {
     return new RenderClient(new LambdaClient({ region }), functionName);
   }
 
-  async render(content: ProposalContent, entity?: LegalEntity): Promise<{ pdf: Buffer; docx: Buffer }> {
+  async render(
+    content: ProposalContent,
+    entity?: LegalEntity,
+    deckType?: 'standard' | 'methodology',
+    methodology?: MethodologyContent,
+  ): Promise<{ pdf: Buffer; docx: Buffer }> {
     const res = await this.lambda.send(new InvokeCommand({
       FunctionName: this.functionName,
-      Payload: new TextEncoder().encode(JSON.stringify({ content, entity })),
+      Payload: new TextEncoder().encode(JSON.stringify({ content, entity, deckType, methodology })),
     }));
     const text = res.Payload ? new TextDecoder().decode(res.Payload) : '';
     if (res.FunctionError) throw new Error(`render lambda failed: ${res.FunctionError} ${text}`);
