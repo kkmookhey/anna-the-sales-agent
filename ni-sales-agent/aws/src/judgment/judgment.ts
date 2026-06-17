@@ -194,13 +194,15 @@ export class JudgmentService {
       'network test ~3-6 md, a config/cloud review ~3-6 md per environment, a red-team ~10-20 md, a compliance ' +
       'assessment ~8-15 md; scale by the asset_count and environments in scope. aiLeverageNote is ONE sentence ' +
       'stating the AI-augmentation assumption). ' +
+      'rfp (boolean — true ONLY if the enquiry or scope reads as a formal RFP/tender or a structured, ' +
+      'multi-service evaluation with formal requirements; false for an ordinary direct enquiry). ' +
       'Populate `credentials` from the library (lead with PCI QSA, PCI PIN Assessor, CREST, HITRUST ' +
       'on technical engagements). Populate `transilienceEdge` only when it strengthens this case; ' +
       'otherwise return []. ' +
       'Keep titleLine SHORT — at most 6 words. It is the cover headline rendered very ' +
       'large, so a long title wraps and crowds the layout. ' +
       'Keep commercials.text to ONE short sentence — detailed pricing/terms live in a separate commercials document, not the deck.';
-    const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines' | 'effort'> & { effort?: unknown }>(
+    const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines' | 'effort'> & { effort?: unknown; rfp?: unknown }>(
       system,
       JSON.stringify(input),
       8000,
@@ -220,12 +222,14 @@ export class JudgmentService {
       aiLeverageNote: String(rawEffort?.aiLeverageNote ?? ''),
       isLarge: totalManDays > 10,
     };
+    const rfp = (raw as { rfp?: unknown }).rfp === true;
     return {
       company: input.company,
       contactName: input.contactName,
       serviceLines: input.serviceLines,
       ...raw,
       effort,
+      rfp,
     };
   }
 }
