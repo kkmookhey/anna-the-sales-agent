@@ -1,77 +1,6 @@
 import type { ProposalContent } from '../proposal/types.js';
-import {
-  JOST_300, JOST_400, JOST_500, JOST_600, JOST_700,
-  ROBOTO_300, ROBOTO_400, ROBOTO_500, ROBOTO_700,
-  MONO_400, MONO_500,
-  COLORS_CSS, DECK_CSS, PROPOSAL_CSS,
-  DECK_STAGE_JS, LUCIDE_JS,
-  LOGO_MARK_SVG,
-} from './assets.generated.js';
+import { esc, logoMark, head, foot, STYLE, type SlideDesc, assembleSlides, wrapDeck } from './deck-shared.js';
 import { serviceLineLabel } from './labels.js';
-
-export const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-const face = (family: string, weight: number, b64: string): string =>
-  `@font-face{font-family:'${family}';font-weight:${weight};font-style:normal;` +
-  `src:url(data:font/woff2;base64,${b64}) format('woff2');}`;
-
-const FONT_FACES = [
-  face('Jost', 300, JOST_300),
-  face('Jost', 400, JOST_400),
-  face('Jost', 500, JOST_500),
-  face('Jost', 600, JOST_600),
-  face('Jost', 700, JOST_700),
-  face('Roboto', 300, ROBOTO_300),
-  face('Roboto', 400, ROBOTO_400),
-  face('Roboto', 500, ROBOTO_500),
-  face('Roboto', 700, ROBOTO_700),
-  face('JetBrains Mono', 400, MONO_400),
-  face('JetBrains Mono', 500, MONO_500),
-].join('');
-
-const STYLE = `<style>${FONT_FACES}${COLORS_CSS}${DECK_CSS}${PROPOSAL_CSS}</style>`;
-
-/** Inline the SVG logo-mark, scaled to a given height while preserving aspect ratio. */
-function logoMark(heightPx: number): string {
-  // Replace any existing width/height on the <svg> tag with height=100% width=auto
-  // so it scales correctly inside the wrapper span.
-  const scaledSvg = LOGO_MARK_SVG.replace(
-    /<svg([^>]*)>/,
-    (_match, attrs: string) => {
-      const cleaned = attrs
-        .replace(/\s*width="[^"]*"/, '')
-        .replace(/\s*height="[^"]*"/, '');
-      return `<svg${cleaned} style="height:100%;width:auto;">`;
-    },
-  );
-  return `<span style="display:inline-flex;align-items:center;height:${heightPx}px;">${scaledSvg}</span>`;
-}
-
-/** Shared header bar used on non-cover slides. */
-function head(dark: boolean, chapter: string): string {
-  const headClass = dark ? 'head' : 'head head-light';
-  return (
-    `<div class="${headClass}">` +
-    `<div class="mark">${logoMark(32)}<span>Network Intelligence</span></div>` +
-    `<div class="chapter">${esc(chapter)}</div>` +
-    `</div>`
-  );
-}
-
-/** Shared footer used on non-cover slides. n = 1-based slide index, total = kept slide count. */
-function foot(dark: boolean, label: string, n: number, total: number): string {
-  const footClass = dark ? 'foot' : 'foot foot-light';
-  const nn = String(n).padStart(2, '0');
-  const tt = String(total).padStart(2, '0');
-  return (
-    `<div class="${footClass}">` +
-    `<span>NI · ${esc(label)}</span>` +
-    `<span>${nn}<span class="dot"></span>${tt}</span>` +
-    `</div>`
-  );
-}
 
 // ─────────────────────────────────────────────
 // Firm-level cover stats (never changes)
@@ -104,31 +33,10 @@ export function coverTitleFontPx(title: string): number {
 }
 
 // ─────────────────────────────────────────────
-// Slide descriptor returned by each builder
-// ─────────────────────────────────────────────
-
-interface SlideDesc {
-  /** The outer section element as a complete string (for special/full-bleed slides). */
-  full?: string;
-  /** Inner body HTML (without head/foot) — used for standard slides. */
-  inner?: string;
-  /** CSS variant class on the section, e.g. "slide-light", "bg-crimson-wash". */
-  variant?: string;
-  /** Whether the slide uses dark styling for head/foot. */
-  dark?: boolean;
-  /** Chapter label rendered in the header right side. */
-  chapter?: string;
-  /** Left-hand label in the footer "NI · <label>". */
-  footLabel?: string;
-  /** Additional inline style for the section element. */
-  sectionStyle?: string;
-}
-
-// ─────────────────────────────────────────────
 // Slide builders
 // ─────────────────────────────────────────────
 
-function buildCover(content: ProposalContent): SlideDesc {
+export function buildCover(content: ProposalContent): SlideDesc {
   const serviceLabels = content.serviceLines.map((k) => serviceLineLabel(k)).join(' · ');
   const statsHtml = COVER_STATS.map((s) => `
       <div>
@@ -175,7 +83,7 @@ function buildCover(content: ProposalContent): SlideDesc {
   };
 }
 
-function buildExecSummary(content: ProposalContent): SlideDesc | null {
+export function buildExecSummary(content: ProposalContent): SlideDesc | null {
   if (!content.pillars.length) return null;
 
   const pillarsHtml = content.pillars.slice(0, 3).map((p, i) => `
@@ -207,7 +115,7 @@ function buildExecSummary(content: ProposalContent): SlideDesc | null {
   };
 }
 
-function buildUnderstanding(content: ProposalContent): SlideDesc | null {
+export function buildUnderstanding(content: ProposalContent): SlideDesc | null {
   const hasStats = content.understandingStats.length > 0;
   const hasSignals = content.signals.length > 0;
   if (!hasStats && !hasSignals) return null;
@@ -254,7 +162,7 @@ function buildUnderstanding(content: ProposalContent): SlideDesc | null {
   };
 }
 
-function buildScope(content: ProposalContent): SlideDesc | null {
+export function buildScope(content: ProposalContent): SlideDesc | null {
   if (!content.scopeRows.length) return null;
 
   const rowsHtml = content.scopeRows.map((r) =>
@@ -314,7 +222,7 @@ function buildApproach(content: ProposalContent): SlideDesc | null {
   };
 }
 
-function buildDeliverables(content: ProposalContent): SlideDesc | null {
+export function buildDeliverables(content: ProposalContent): SlideDesc | null {
   if (!content.deliverables.length && !content.timeline) return null;
 
   const deliverablesHtml = content.deliverables.map((d) =>
@@ -354,7 +262,7 @@ function buildDeliverables(content: ProposalContent): SlideDesc | null {
   };
 }
 
-function buildCredentials(content: ProposalContent): SlideDesc | null {
+export function buildCredentials(content: ProposalContent): SlideDesc | null {
   if (!content.credentials.length) return null;
 
   const chipsHtml = content.credentials.map((c) =>
@@ -384,7 +292,7 @@ function buildCredentials(content: ProposalContent): SlideDesc | null {
   };
 }
 
-function buildWhyNi(content: ProposalContent): SlideDesc | null {
+export function buildWhyNi(content: ProposalContent): SlideDesc | null {
   if (!content.whyNi.length) return null;
 
   const tilesHtml = content.whyNi.slice(0, 3).map((item, i) => {
@@ -436,7 +344,7 @@ function buildCommercials(content: ProposalContent): SlideDesc {
   };
 }
 
-function buildNextSteps(content: ProposalContent): SlideDesc {
+export function buildNextSteps(content: ProposalContent): SlideDesc {
   const steps = content.ctaSteps.length
     ? content.ctaSteps
     : [{ when: 'This week', title: "Let's talk", detail: `Contact us at sales@networkintelligence.ai` }];
@@ -508,52 +416,10 @@ function buildNextSteps(content: ProposalContent): SlideDesc {
 
 export function renderProposalHtml(content: ProposalContent): string {
   const descs: (SlideDesc | null)[] = [
-    buildCover(content),
-    buildExecSummary(content),
-    buildUnderstanding(content),
-    buildScope(content),
-    buildApproach(content),
-    buildDeliverables(content),
-    buildCredentials(content),
-    buildWhyNi(content),
-    buildCommercials(content),
+    buildCover(content), buildExecSummary(content), buildUnderstanding(content),
+    buildScope(content), buildApproach(content), buildDeliverables(content),
+    buildCredentials(content), buildWhyNi(content), buildCommercials(content),
     buildNextSteps(content),
   ];
-
-  // Filter nulls first so we can compute total for dynamic slide numbering.
-  const kept = descs.filter((d): d is SlideDesc => d !== null);
-  const total = kept.length;
-
-  const deck = kept.map((d, i) => {
-    const n = i + 1;
-
-    // Full-bleed slides with pre-built HTML (cover): emitted as-is.
-    if (d.full !== undefined) {
-      return d.full;
-    }
-
-    // Standard slides: assembler wraps inner with head + foot.
-    const variantClass = d.variant ? `slide ${d.variant}` : 'slide';
-    const styleAttr = d.sectionStyle ? ` style="${d.sectionStyle}"` : '';
-    const chapterLabel = d.chapter ?? '';
-    const footLabel = d.footLabel ?? '';
-    const dark = d.dark ?? false;
-
-    return (
-      `<section class="${variantClass}"${styleAttr}>` +
-      head(dark, chapterLabel) +
-      (d.inner ?? '') +
-      foot(dark, footLabel, n, total) +
-      `</section>`
-    );
-  }).join('');
-
-  return (
-    `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">${STYLE}</head>` +
-    `<body><deck-stage width="1920" height="1080">${deck}</deck-stage>` +
-    `<script>${DECK_STAGE_JS}</script>` +
-    `<script>${LUCIDE_JS}</script>` +
-    `<script>window.lucide&&lucide.createIcons()</script>` +
-    `</body></html>`
-  );
+  return wrapDeck(assembleSlides(descs));
 }
