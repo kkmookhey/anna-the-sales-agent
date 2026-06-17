@@ -8,7 +8,7 @@ import type { AttachmentMeta } from '../adapters/graph.js';
 import { isAutomatedSender } from './intake.js';
 import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
-import type { ProposalContent } from '../proposal/types.js';
+import type { ProposalContent, MethodologyContent } from '../proposal/types.js';
 import { resolveEntity } from '../render/legal-entities.js';
 
 const escHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -47,6 +47,7 @@ export interface JudgePort {
   classifyInbound(i: { fromName: string; fromAddress: string; subject: string; body: string }): Promise<{ category: 'enquiry' | 'forwarded_enquiry' | 'not_enquiry'; original_sender?: { name: string; email: string }; confidence: 'high' | 'low'; reason: string }>;
   classifyProposalReply(i: { subject: string; reply: string }): Promise<{ kind: 'meeting' | 'po' | 'clarification' | 'none' }>;
   buildProposalContent(i: { company: string; contactName: string; serviceLines: string[]; scope: Record<string, unknown>; assumptions: string[] }): Promise<ProposalContent>;
+  buildMethodologyContent(i: { company: string; contactName: string; serviceLines: string[]; scope: Record<string, unknown>; effortLines: import('../proposal/types.js').EffortLine[]; totalManDays: number }): Promise<MethodologyContent>;
 }
 export interface RepoPort {
   listDeals(): Promise<Deal[]>;
@@ -59,7 +60,7 @@ export interface S3Port {
   put(key: string, body: Buffer, contentType?: string): Promise<string>;
 }
 export interface DeckPort {
-  render(content: ProposalContent, entity?: import('../render/legal-entities.js').LegalEntity): Promise<{ pdf: Buffer; docx: Buffer }>;
+  render(content: ProposalContent, entity?: import('../render/legal-entities.js').LegalEntity, deckType?: 'standard' | 'methodology', methodology?: MethodologyContent): Promise<{ pdf: Buffer; docx: Buffer }>;
   parseAttachment(file: { name: string; contentType: string; bytes: Buffer }): Promise<{ name: string; text: string; truncated: boolean; error?: string }>;
 }
 
@@ -463,8 +464,21 @@ async function stageProposal(
   const region = (deal.scope as { region?: string | null }).region ?? null;
   const { entity, defaulted } = resolveEntity(region);
 
+  const deckType: 'standard' | 'methodology' =
+    content.effort.isLarge || content.rfp ? 'methodology' : 'standard';
+  const methodology = deckType === 'methodology'
+    ? await judge.buildMethodologyContent({
+        company: deal.company,
+        contactName: deal.contact_name,
+        serviceLines: deal.service_lines,
+        scope: deal.scope as unknown as Record<string, unknown>,
+        effortLines: content.effort.lines,
+        totalManDays: content.effort.totalManDays,
+      })
+    : undefined;
+
   const version = (deal.proposal?.version ?? 0) + 1;
-  const { pdf, docx } = await deck.render(content, entity);
+  const { pdf, docx } = await deck.render(content, entity, deckType, methodology);
   const slug = deal.company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   const pdfName = `${slug}-proposal-v${version}.pdf`;
   const docxName = `${slug}-commercials-v${version}.docx`;
@@ -510,6 +524,8 @@ async function stageProposal(
     flags.push(`:large_blue_circle: ${content.effort.totalManDays} man-days — LARGE engagement (methodology deck candidate).`);
   else
     flags.push(`Effort: ${content.effort.totalManDays} man-days.`);
+  if (deckType === 'methodology')
+    flags.push(`:books: Methodology deck (${content.effort.totalManDays} md / ${content.rfp ? 'RFP' : 'large'}) — ${content.effort.lines.length} service line(s).`);
   const flagText = flags.length ? `\n${flags.join('\n')}` : '';
   const text =
     `*[STAGING — proposal]* ${deal.company} / ${deal.contact_name}\n` +
