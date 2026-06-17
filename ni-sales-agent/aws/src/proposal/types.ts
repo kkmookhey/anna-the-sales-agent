@@ -22,6 +22,24 @@ export interface Effort {
   isLarge: boolean; // totalManDays > 10 — Slice 2 methodology-deck trigger
 }
 
+export interface FrameworkCrosswalkRow { area: string; frameworks: string[]; evidence: string }
+export interface TimelineDay { day: string; milestone: string }
+export interface ServiceMethodologyBlock {
+  serviceLine: string;
+  phases: { name: string; detail: string }[];
+  frameworks: string[];
+  tooling: string[];
+  aiAugmentation: string;
+}
+export interface MethodologyContent {
+  operatingLoop: { name: string; detail: string }[];
+  services: ServiceMethodologyBlock[];
+  aiHighlights: { stat: string; label: string }[];
+  crosswalk: FrameworkCrosswalkRow[];
+  timeline: TimelineDay[];
+  exclusions: string[];
+}
+
 export interface ProposalContent {
   company: string;
   contactName: string;
@@ -44,4 +62,5 @@ export interface ProposalContent {
   approachPhases: ApproachPhase[];
   ctaSteps: CtaStep[];
   effort: Effort;
+  rfp: boolean;
 }
