@@ -64,4 +64,21 @@ describe('buildCommercialsLetterhead', () => {
     expect(doc).toContain('Acme &amp; Co');                // XML-escaped, no raw &
     expect(doc).not.toContain('Acme & Co');
   });
+
+  it('renders an elegant, well-spaced signature block (rule + space above, gap between the two parts)', async () => {
+    const { doc } = await bodyText(await buildCommercialsLetterhead(content(), ENTITIES.INDIA));
+    // The signatory line is set off from the terms with a faint rule + generous space above.
+    const sig = doc.indexOf('For and on behalf of Network Intelligence Pvt. Ltd.');
+    expect(sig).toBeGreaterThan(-1);
+    const sigPara = doc.slice(doc.lastIndexOf('<w:p>', sig), sig);
+    expect(sigPara).toContain('<w:pBdr><w:top'); // separator rule
+    expect(sigPara).toContain('w:before="600"'); // generous space above the block
+    // The contact line is a distinct, muted second part with its own spacing gap.
+    expect(doc).toContain('Authorised Signatory');
+    expect(doc).toContain('sales@networkintelligence.ai');
+    expect(doc).toContain('<w:color w:val="7A7A7A"/>'); // muted contact/label colour
+    const contactIdx = doc.indexOf('sales@networkintelligence.ai');
+    const contactPara = doc.slice(doc.lastIndexOf('<w:p>', contactIdx), contactIdx);
+    expect(contactPara).toContain('w:before="520"'); // clear gap between the two parts
+  });
 });

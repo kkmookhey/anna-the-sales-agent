@@ -12,6 +12,18 @@ describe('docx-xml emitters', () => {
     expect(xml).toContain('<w:t xml:space="preserve">Liability &amp; scope</w:t>');
   });
 
+  it('emits paragraph spacing, colour, and a top rule when requested', () => {
+    const xml = para('Signatory', { bold: true, size: 22, color: '7A7A7A', before: 600, after: 120, topRule: true });
+    expect(xml).toContain('<w:spacing w:before="600" w:after="120"/>');
+    expect(xml).toContain('<w:pBdr><w:top w:val="single"'); // faint separator rule
+    expect(xml).toContain('<w:color w:val="7A7A7A"/>');
+    expect(xml).toContain('<w:sz w:val="22"/>');
+  });
+
+  it('omits paragraph properties when no spacing/rule is set (backward compatible)', () => {
+    expect(para('plain')).toBe('<w:p><w:r><w:t xml:space="preserve">plain</w:t></w:r></w:p>');
+  });
+
   it('emits a heading with bold styling', () => {
     expect(heading('Payment terms')).toContain('<w:b/>');
     expect(heading('Payment terms')).toContain('Payment terms');

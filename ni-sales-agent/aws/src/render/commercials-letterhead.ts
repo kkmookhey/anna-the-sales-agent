@@ -46,9 +46,11 @@ function buildBodyXml(content: ProposalContent, entity: LegalEntity): string {
   for (const t of BASE_TERMS) parts.push(bullet(t));
   parts.push(bullet(entity.governingLaw));
 
-  // Signatory
-  parts.push(para(entity.signatory, { size: 18 }));
-  parts.push(para('sales@networkintelligence.ai · networkintelligence.ai', { size: 18 }));
+  // Signatory — set apart from the terms above with a faint rule + generous whitespace,
+  // then a clean two-tier block: the signing entity, a signature line, and the contact line.
+  parts.push(para(entity.signatory, { bold: true, size: 22, before: 600, topRule: true }));
+  parts.push(para('Authorised Signatory', { size: 17, color: '7A7A7A', before: 320 }));
+  parts.push(para('sales@networkintelligence.ai   ·   networkintelligence.ai', { size: 17, color: '7A7A7A', before: 520 }));
 
   return parts.join('');
 }

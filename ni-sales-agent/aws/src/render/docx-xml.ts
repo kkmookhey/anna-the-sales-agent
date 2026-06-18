@@ -9,16 +9,32 @@ export function xmlEscape(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function run(text: string, opts: { bold?: boolean; size?: number } = {}): string {
+export interface RunOpts { bold?: boolean; size?: number; color?: string }
+export interface ParaOpts extends RunOpts {
+  before?: number; // space above the paragraph, in twentieths of a point
+  after?: number;  // space below the paragraph, in twentieths of a point
+  topRule?: boolean; // faint horizontal rule along the paragraph's top edge
+}
+
+function run(text: string, opts: RunOpts = {}): string {
   const rpr =
-    opts.bold || opts.size
-      ? `<w:rPr>${opts.bold ? '<w:b/>' : ''}${opts.size ? `<w:sz w:val="${opts.size}"/>` : ''}</w:rPr>`
+    opts.bold || opts.size || opts.color
+      ? `<w:rPr>${opts.bold ? '<w:b/>' : ''}${opts.size ? `<w:sz w:val="${opts.size}"/>` : ''}` +
+        `${opts.color ? `<w:color w:val="${opts.color}"/>` : ''}</w:rPr>`
       : '';
   return `<w:r>${rpr}<w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r>`;
 }
 
-export function para(text: string, opts: { bold?: boolean; size?: number } = {}): string {
-  return `<w:p>${run(text, opts)}</w:p>`;
+export function para(text: string, opts: ParaOpts = {}): string {
+  const border = opts.topRule
+    ? '<w:pBdr><w:top w:val="single" w:sz="4" w:space="10" w:color="CCCCCC"/></w:pBdr>'
+    : '';
+  const spacing =
+    opts.before != null || opts.after != null
+      ? `<w:spacing${opts.before != null ? ` w:before="${opts.before}"` : ''}${opts.after != null ? ` w:after="${opts.after}"` : ''}/>`
+      : '';
+  const ppr = border || spacing ? `<w:pPr>${border}${spacing}</w:pPr>` : '';
+  return `<w:p>${ppr}${run(text, opts)}</w:p>`;
 }
 
 export function heading(text: string): string {
