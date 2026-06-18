@@ -161,7 +161,55 @@ describe('runLoop — intake classification', () => {
   });
 });
 
+// Sets up a single SCOPE_REVIEW deal with a pending client reply, ready for the proposal slice.
+function setupScopeReview(deps: LoopDeps): void {
+  (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+    {
+      deal_id: 'conv-1', stage: 'SCOPE_REVIEW', company: 'Novelty Wealth', contact_name: 'Shashank',
+      contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+      last_inbound_id: 'm1', last_inbound_at: '2026-06-02T10:00:00Z', next_followup_date: null, followup_count: 0,
+      scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+        timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+      assumptions: [], proposal: null, actions: [], flags: [],
+    },
+  ]);
+  (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+  (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({
+    id: 'm2', conversationId: 'conv-1', subject: 'Re: VAPT', fromName: 'Shashank',
+    fromAddress: 'kkmookhey@gmail.com', participants: ['kkmookhey@gmail.com'], receivedDateTime: '2026-06-02T12:00:00Z',
+    bodyPreview: 'Answers', bodyFull: '<p>Answers</p>', hasAttachments: false,
+  });
+}
+
 describe('runLoop — SCOPE_REVIEW proposal slice', () => {
+  it('does NOT generate methodology content for a small/standard deal (cost guard)', async () => {
+    const deps = baseDeps({});
+    setupScopeReview(deps); // default buildProposalContent mock has isLarge:false, rfp:false
+    await runLoop(deps);
+    expect(deps.judge.buildMethodologyContent).not.toHaveBeenCalled();
+    const renderArgs = (deps.deck.render as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(renderArgs[2]).toBe('standard');   // deckType
+    expect(renderArgs[3]).toBeUndefined();    // no methodology content
+  });
+
+  it('generates methodology content and routes the methodology deck for a large/RFP deal', async () => {
+    const deps = baseDeps({});
+    setupScopeReview(deps);
+    (deps.judge.buildProposalContent as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      company: 'Novelty Wealth', contactName: 'Shashank', serviceLines: ['pentest_mobile'],
+      titleLine: 'X', understanding: [], scopeRows: [], assumptions: [], approach: [], deliverables: [],
+      timeline: '', whyNi: [], credentials: [], transilienceEdge: [], commercials: { mode: 'placeholder', text: '' },
+      nextSteps: [], understandingStats: [], pillars: [], signals: [], approachPhases: [], ctaSteps: [],
+      effort: { lines: [{ serviceLine: 'pentest_mobile', basis: 'x', manDays: 14 }], totalManDays: 14, aiLeverageNote: '', isLarge: true },
+      rfp: false,
+    });
+    await runLoop(deps);
+    expect(deps.judge.buildMethodologyContent).toHaveBeenCalledOnce();
+    const renderArgs = (deps.deck.render as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(renderArgs[2]).toBe('methodology');
+    expect(renderArgs[3]).toBeDefined();      // methodology content threaded through
+  });
+
   it('SCOPE_REVIEW + sufficient scope builds a deck, stores it, attaches it, and stages the proposal', async () => {
     const deps = baseDeps({});
     (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([

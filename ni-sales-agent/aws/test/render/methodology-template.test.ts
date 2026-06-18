@@ -57,4 +57,27 @@ describe('renderMethodologyHtml', () => {
     expect(html).toContain('Standards, tooling &amp; AI acceleration.');
     expect(html).toContain('Phase-by-phase approach.');
   });
+
+  it('numbers per-service chapters distinctly (05.1, 05.2, 05.3)', () => {
+    const html = renderMethodologyHtml(proposal(), methodology());
+    expect(html).toContain('05.1 · Methodology');
+    expect(html).toContain('05.2 · Methodology');
+    expect(html).toContain('05.3 · Methodology');
+  });
+
+  it('derives the funnel figures from the model first highlight (no hardcoded contradiction)', () => {
+    const m = methodology();
+    m.aiHighlights = [{ stat: '12k→8', label: 'prioritized' }, { stat: '95%', label: 'accuracy' }];
+    const html = renderMethodologyHtml(proposal(), m);
+    expect(html).toContain('funnel-from">12k<');
+    expect(html).toContain('funnel-to">8<');
+  });
+
+  it('falls back to the canonical 16k→10 funnel when the first highlight is not arrow-shaped', () => {
+    const m = methodology();
+    m.aiHighlights = [{ stat: '95%', label: 'accuracy' }];
+    const html = renderMethodologyHtml(proposal(), m);
+    expect(html).toContain('funnel-from">16k<');
+    expect(html).toContain('funnel-to">10<');
+  });
 });

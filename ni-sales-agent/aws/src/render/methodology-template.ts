@@ -28,24 +28,24 @@ function buildMethodologyOverview(m: MethodologyContent): SlideDesc | null {
   };
 }
 
-function buildServiceMethodology(block: MethodologyContent['services'][number]): SlideDesc {
+function buildServiceMethodology(block: MethodologyContent['services'][number], idx: number): SlideDesc {
   const phases = block.phases.map((p, i) => `
     <tr><td><strong style="color:#0A0A0B;">${String(i + 1).padStart(2, '0')} · ${esc(p.name)}</strong></td>
         <td>${esc(p.detail)}</td></tr>`).join('');
   return {
     variant: 'slide-light', dark: false,
-    chapter: `05 · Methodology — ${serviceLineLabel(block.serviceLine)}`, footLabel: 'Methodology',
+    chapter: `05.${idx + 1} · Methodology — ${serviceLineLabel(block.serviceLine)}`, footLabel: 'Methodology',
     inner: `${sectionHead('eyebrow eyebrow-violet', serviceLineLabel(block.serviceLine), 'Phase-by-phase approach.')}
       <table class="coverage-table"><thead><tr><th>Phase</th><th>What we do at each phase</th></tr></thead><tbody>${phases}</tbody></table>`,
   };
 }
 
-function buildServiceTooling(block: MethodologyContent['services'][number]): SlideDesc {
+function buildServiceTooling(block: MethodologyContent['services'][number], idx: number): SlideDesc {
   const tags = block.frameworks.map((f) => `<span class="fw-tag fw-tag-dark">${esc(f)}</span>`).join('');
   const tools = block.tooling.map((t) => `<span class="fw-tag fw-tag-dark">${esc(t)}</span>`).join('');
   return {
     variant: 'bg-crimson-wash', dark: true,
-    chapter: `05 · Standards & tooling — ${serviceLineLabel(block.serviceLine)}`, footLabel: 'Methodology',
+    chapter: `05.${idx + 1} · Standards & tooling — ${serviceLineLabel(block.serviceLine)}`, footLabel: 'Methodology',
     inner: `${sectionHead('eyebrow', serviceLineLabel(block.serviceLine), 'Standards, tooling & AI acceleration.')}
       <p class="eyebrow" style="margin-top:36px;">Frameworks &amp; standards</p>
       <div style="margin-top:14px;">${tags}</div>
@@ -56,8 +56,18 @@ function buildServiceTooling(block: MethodologyContent['services'][number]): Sli
   };
 }
 
+// Parse an arrow-style stat like "16k→10" / "16k -> 10" into its before/after halves.
+function parseArrowStat(stat: string): { from: string; to: string } | null {
+  const match = /^(.+?)\s*(?:→|->)\s*(.+)$/.exec(stat.trim());
+  return match ? { from: (match[1] ?? '').trim(), to: (match[2] ?? '').trim() } : null;
+}
+
 function buildAiAugmentedDelivery(m: MethodologyContent): SlideDesc | null {
   if (!m.aiHighlights.length) return null;
+  // Drive the funnel figures from the model's first highlight when it is arrow-shaped,
+  // so the funnel never contradicts the tile beside it; otherwise fall back to the
+  // canonical Transilience reduction metric.
+  const funnel = (m.aiHighlights[0] && parseArrowStat(m.aiHighlights[0].stat)) || { from: '16k', to: '10' };
   const tiles = m.aiHighlights.map((h, i) => {
     const cls = i === m.aiHighlights.length - 1 && m.aiHighlights.length > 1 ? 'tile tile-accent' : 'tile';
     return `<div class="${cls}">
@@ -68,9 +78,9 @@ function buildAiAugmentedDelivery(m: MethodologyContent): SlideDesc | null {
     variant: 'bg-crimson-wash', dark: true, chapter: '06 · AI-augmented delivery', footLabel: 'Methodology',
     inner: `${sectionHead('eyebrow', 'The Transilience edge', 'AI-augmented, human-led.')}
       <div class="funnel">
-        <span class="funnel-figure funnel-from">16k</span>
+        <span class="funnel-figure funnel-from">${esc(funnel.from)}</span>
         <span class="funnel-arrow">→</span>
-        <span class="funnel-figure funnel-to">10</span>
+        <span class="funnel-figure funnel-to">${esc(funnel.to)}</span>
         <span class="funnel-label">Transilience compresses raw findings into the handful of prioritized, exploitable actions that matter.</span>
       </div>
       <div style="margin-top:44px;display:grid;grid-template-columns:repeat(${Math.min(m.aiHighlights.length, 3)},1fr);gap:18px;">${tiles}</div>`,
@@ -135,7 +145,7 @@ export function renderMethodologyHtml(content: ProposalContent, m: MethodologyCo
     buildUnderstanding(content),
     buildScope(content),
     buildMethodologyOverview(m),
-    ...m.services.flatMap((s) => [buildServiceMethodology(s), buildServiceTooling(s)]),
+    ...m.services.flatMap((s, i) => [buildServiceMethodology(s, i), buildServiceTooling(s, i)]),
     buildAiAugmentedDelivery(m),
     buildFrameworkCrosswalk(m),
     buildDeliverables(content),
