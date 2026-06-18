@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GraphClient } from '../../src/adapters/graph.js';
+import { GraphClient, GraphNotFoundError } from '../../src/adapters/graph.js';
 
 function mockFetchSequence(responses: Array<{ ok?: boolean; status?: number; json: unknown }>) {
   const fn = vi.fn();
@@ -130,6 +130,44 @@ describe('GraphClient', () => {
     ]);
     const g = new GraphClient(creds, 'sales@networkintelligence.ai');
     await expect(g.listInbound('2026-06-02T00:00:00Z')).rejects.toThrow(/403/);
+  });
+
+  it('throws a typed GraphNotFoundError on 404 (so a vanished reply target can be parked)', async () => {
+    mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { ok: false, status: 404, json: { error: { code: 'ErrorItemNotFound', message: 'The specified object was not found in the store.' } } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    await expect(g.createDraftReply('dead-id', '<p>x</p>')).rejects.toBeInstanceOf(GraphNotFoundError);
+  });
+
+  it('latestMessageInConversation returns the newest non-draft message across all folders', async () => {
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { value: [
+        { id: 'orig-inbound', receivedDateTime: '2026-06-02T10:00:00Z', isDraft: false },
+        { id: 'our-sent-proposal', receivedDateTime: '2026-06-04T09:00:00Z', isDraft: false },
+        { id: 'our-unsent-draft', receivedDateTime: '2026-06-05T09:00:00Z', isDraft: true },
+      ] } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const target = await g.latestMessageInConversation("conv'1");
+    // newest is the unsent draft (06-05) but it's excluded → the sent proposal (06-04) is the live target.
+    expect(target).toEqual({ id: 'our-sent-proposal' });
+    const url = fetchMock.mock.calls[1]![0] as string;
+    expect(url).toContain('/users/sales%40networkintelligence.ai/messages');
+    expect(url).not.toContain('mailFolders'); // searches ALL folders, not just inbox
+    expect(url).not.toContain('%24orderby');
+    expect(decodeURIComponent(url)).toContain("conversationId eq 'conv''1'");
+  });
+
+  it('latestMessageInConversation returns null when the conversation has no live message', async () => {
+    mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { value: [{ id: 'only-a-draft', receivedDateTime: '2026-06-05T09:00:00Z', isDraft: true }] } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    expect(await g.latestMessageInConversation('conv-x')).toBeNull();
   });
 
   it('addAttachment posts a base64 fileAttachment to the draft', async () => {

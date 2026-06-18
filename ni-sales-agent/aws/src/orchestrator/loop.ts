@@ -5,6 +5,7 @@ import { decideTransition, resolveScopeReview, resolveProposalReply } from './tr
 import { bareEmail, bodyDerivedRecipient, scanForInjection, verifiedRecipient } from '../gates/gates.js';
 import { decideAttachment, MAX_FILES_PER_MESSAGE } from '../gates/attachments.js';
 import type { AttachmentMeta } from '../adapters/graph.js';
+import { GraphNotFoundError } from '../adapters/graph.js';
 import { isAutomatedSender } from './intake.js';
 import { logger } from '../logging.js';
 import { renderPipelineBoard } from '../canvas/board.js';
@@ -24,6 +25,7 @@ export interface GraphPort {
   wasReplySent(conversationId: string, afterIso: string): Promise<boolean>;
   draftExistsInConversation(conversationId: string): Promise<boolean>;
   latestInboundInConversation(conversationId: string, afterIso: string): Promise<InboundMessage | null>;
+  latestMessageInConversation(conversationId: string): Promise<{ id: string } | null>;
   addAttachment(messageId: string, name: string, content: Buffer, contentType?: string): Promise<void>;
   listAttachments(messageId: string): Promise<AttachmentMeta[]>;
   getAttachmentBytes(messageId: string, attachmentId: string): Promise<Buffer>;
@@ -177,9 +179,23 @@ export async function runLoop(deps: LoopDeps): Promise<RunSummary> {
         if (line.newFlags) summary.flagged += line.newFlags;
       }
     } catch (err) {
-      summary.errors++;
-      logger.error('advance_deal_failed', { deal_id: deal.deal_id, error: err instanceof Error ? err.message : String(err) });
-      stagingLines.push(`:x: *Error advancing* ${deal.company} (\`${deal.deal_id}\`): ${err instanceof Error ? err.message : String(err)}`);
+      if (err instanceof GraphNotFoundError) {
+        // The message we'd reply to no longer resolves in the mailbox (deleted/moved, and the
+        // live thread couldn't be re-resolved either). Park + flag ONCE instead of erroring on
+        // every scheduled run — a human must re-link or close the deal.
+        logger.error('advance_deal_parked_notfound', { deal_id: deal.deal_id, error: err.message });
+        if (!deal.parked_at) {
+          deal.parked_at = nowIso;
+          deal.flags.push({ ts: nowIso, message_id: deal.last_inbound_id, reason: 'reply target not found (404) — email thread no longer in the mailbox' });
+          await deps.repo.putDeal(deal);
+          summary.flagged++;
+          stagingLines.push(`:hourglass_flowing_sand: *Parked* ${deal.company} (\`${deal.deal_id}\`): the email thread we'd reply to no longer exists in the mailbox — re-link or close this deal.`);
+        }
+      } else {
+        summary.errors++;
+        logger.error('advance_deal_failed', { deal_id: deal.deal_id, error: err instanceof Error ? err.message : String(err) });
+        stagingLines.push(`:x: *Error advancing* ${deal.company} (\`${deal.deal_id}\`): ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
   }
 
@@ -395,7 +411,11 @@ async function stageDraft(
     logger.info('skip_duplicate_draft', { deal_id: deal.deal_id, stage: deal.stage, action: actionType });
     return null;
   }
-  const replyToMessageId = latest?.id ?? deal.last_inbound_id;
+  // Reply target, most-durable first: a fresh prospect reply, else the live thread re-resolved
+  // at send time (the stored last_inbound_id dies when its email is deleted/moved). Only fall
+  // back to the stored id when the conversation can't be resolved at all.
+  const replyToMessageId =
+    latest?.id ?? (await graph.latestMessageInConversation(deal.deal_id))?.id ?? deal.last_inbound_id;
   const fwd = deal.intake.source === 'forwarded';
   const toProspect = fwd ? deal.intake.proposed_recipient : undefined;
   const body = `${bodyHtml}${EMAIL_SIGN_OFF}`;
@@ -497,7 +517,9 @@ async function stageProposal(
 
   let draftRef = `(dry-run — no draft; deck stored at ${deckUri})`;
   if (!config.dryRun) {
-    const draftId = await graph.createDraftReply(latest?.id ?? deal.last_inbound_id, coverHtml);
+    const replyTarget =
+      latest?.id ?? (await graph.latestMessageInConversation(deal.deal_id))?.id ?? deal.last_inbound_id;
+    const draftId = await graph.createDraftReply(replyTarget, coverHtml);
     await graph.addAttachment(draftId, pdfName, pdf, 'application/pdf');
     await graph.addAttachment(draftId, docxName, docx, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     draftRef = `Outlook draft ${draftId} (deck + commercials attached)`;

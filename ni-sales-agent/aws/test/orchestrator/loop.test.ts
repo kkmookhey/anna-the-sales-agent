@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runLoop, type LoopDeps } from '../../src/orchestrator/loop.js';
 import type { Deal } from '../../src/state/types.js';
+import { GraphNotFoundError } from '../../src/adapters/graph.js';
 
 function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
   const stored: Record<string, Deal> = {};
@@ -28,6 +29,7 @@ function baseDeps(overrides: Partial<LoopDeps>): LoopDeps {
       wasReplySent: vi.fn().mockResolvedValue(false),
       draftExistsInConversation: vi.fn().mockResolvedValue(false),
       latestInboundInConversation: vi.fn().mockResolvedValue(null),
+      latestMessageInConversation: vi.fn().mockResolvedValue(null),
       addAttachment: vi.fn().mockResolvedValue(undefined),
       listAttachments: vi.fn().mockResolvedValue([]),
       getAttachmentBytes: vi.fn().mockResolvedValue(Buffer.from('')),
@@ -715,5 +717,77 @@ describe('runLoop — idempotency guard', () => {
     expect(deps.judge.assessSufficiency).not.toHaveBeenCalled();
     expect(deps.slack.postStaging).not.toHaveBeenCalled();
     expect(deps.repo.putDeal).not.toHaveBeenCalled();
+  });
+});
+
+describe('runLoop — reply-target durability (stale message id)', () => {
+  // A PROPOSAL_SENT deal whose follow-up cadence is due and whose prospect has gone quiet:
+  // there is no fresh inbound, so the reply target must be re-resolved from the live thread.
+  function followupDueDeal(): Deal {
+    return {
+      deal_id: 'conv-1', stage: 'PROPOSAL_SENT', company: 'Iica', contact_name: 'Buyer',
+      contact_email: 'buyer@iica.example', service_lines: ['pentest_web'], created_at: '2026-05-20T00:00:00Z',
+      last_inbound_id: 'DEAD-STORED-ID', last_inbound_at: '2026-05-25T10:00:00Z',
+      next_followup_date: '2026-05-28T00:00:00Z', followup_count: 0,
+      scope: { service_lines: ['pentest_web'], asset_count: null, environment: null, compliance_driver: null,
+        timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+      assumptions: [], proposal: null, actions: [], flags: [], intake: { source: 'direct', recipient_verified: true },
+    } as Deal;
+  }
+
+  it('re-resolves the live thread for a follow-up instead of replying to the dead stored id', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (deps.graph.latestMessageInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'LIVE-SENT-PROPOSAL' });
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([followupDueDeal()]);
+
+    await runLoop(deps);
+
+    expect(deps.judge.draftFollowup).toHaveBeenCalledOnce();
+    // Replies to the re-resolved live thread message, NOT the dead stored id.
+    expect(deps.graph.createDraftReply).toHaveBeenCalledWith('LIVE-SENT-PROPOSAL', expect.any(String));
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+    expect(stored.stage).toBe('FOLLOWUP_PENDING_APPROVAL');
+  });
+
+  it('parks + flags the deal ONCE (not an error) when the reply target 404s and no live thread resolves', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (deps.graph.latestMessageInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null); // whole thread gone
+    (deps.graph.createDraftReply as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new GraphNotFoundError('/messages/DEAD-STORED-ID/createReplyAll', '{"error":{"code":"ErrorItemNotFound"}}'),
+    );
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([followupDueDeal()]);
+
+    const summary = await runLoop(deps);
+
+    expect(summary.errors).toBe(0);    // NOT counted as an error
+    expect(summary.flagged).toBe(1);   // counted as a flag instead
+    const stored = (deps.repo.putDeal as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+    expect(stored.parked_at).toBe(deps.now.toISOString());
+    const posted = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+    expect(posted).toContain('Parked');
+    expect(posted).toContain('no longer exists in the mailbox');
+    expect(posted).not.toContain('Error advancing');
+  });
+
+  it('stays silent on a repeat run once already parked (no duplicate Slack flag)', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (deps.graph.latestMessageInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (deps.graph.createDraftReply as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new GraphNotFoundError('/messages/DEAD-STORED-ID/createReplyAll', '{"error":{"code":"ErrorItemNotFound"}}'),
+    );
+    const already = followupDueDeal();
+    already.parked_at = '2026-05-30T00:00:00Z'; // already parked on a prior run
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([already]);
+
+    const summary = await runLoop(deps);
+
+    expect(summary.errors).toBe(0);
+    expect(summary.flagged).toBe(0); // already notified — no repeat flag
   });
 });

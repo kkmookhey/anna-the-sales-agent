@@ -22,6 +22,16 @@ export interface InboundMessage {
 
 const GRAPH = 'https://graph.microsoft.com/v1.0';
 
+/** Thrown when Graph returns 404 — e.g. a stored (mutable) message id that no longer
+ *  resolves because the email was deleted or moved. Callers distinguish this from other
+ *  failures so a vanished reply target can be parked, not retried on every run. */
+export class GraphNotFoundError extends Error {
+  constructor(public readonly path: string, public readonly detail: string) {
+    super(`Graph ${path} -> 404: ${detail}`);
+    this.name = 'GraphNotFoundError';
+  }
+}
+
 export class GraphClient {
   private token: { value: string; expiresAt: number } | null = null;
 
@@ -60,7 +70,9 @@ export class GraphClient {
       },
     });
     if (!res.ok) {
-      throw new Error(`Graph ${path} -> ${res.status}: ${await res.text()}`);
+      const detail = await res.text();
+      if (res.status === 404) throw new GraphNotFoundError(path, detail);
+      throw new Error(`Graph ${path} -> ${res.status}: ${detail}`);
     }
     return res;
   }
@@ -165,6 +177,24 @@ export class GraphClient {
       b.receivedDateTime.localeCompare(a.receivedDateTime) > 0 ? b : a,
     );
     return toInbound(newest);
+  }
+
+  /** Newest non-draft message in a conversation across ALL folders — a DURABLE reply target.
+   *  Unlike a stored message id (which dies when the original email is deleted/moved), this
+   *  re-resolves the live thread at send time; for a sent proposal the thread still resolves
+   *  here. Returns null when the conversation has no resolvable message (then the caller parks). */
+  async latestMessageInConversation(conversationId: string): Promise<{ id: string } | null> {
+    const filter = encodeURIComponent(`conversationId eq '${this.odata(conversationId)}'`);
+    // No $orderby (Graph rejects $filter+$orderby on messages); fetch a page and sort client-side.
+    const path = `/users/${this.box()}/messages?$filter=${filter}&$top=25&$select=id,receivedDateTime,isDraft`;
+    const res = await this.call(path);
+    const json = (await res.json()) as { value: Array<{ id: string; receivedDateTime: string; isDraft?: boolean }> };
+    const live = json.value.filter((m) => !m.isDraft);
+    if (!live.length) return null;
+    const newest = live.reduce((a, b) =>
+      b.receivedDateTime.localeCompare(a.receivedDateTime) > 0 ? b : a,
+    );
+    return { id: newest.id };
   }
 
   async addAttachment(messageId: string, name: string, content: Buffer, contentType?: string): Promise<void> {
