@@ -7,8 +7,10 @@ import {
   LOGO_MARK_SVG,
 } from './assets.generated.js';
 
-export const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+// Total HTML-escaper: coerces non-string input (e.g. a model-returned number) to a string
+// so a stray non-string field can never crash rendering at the escaping boundary.
+export const esc = (s: unknown): string =>
+  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 const face = (family: string, weight: number, b64: string): string =>

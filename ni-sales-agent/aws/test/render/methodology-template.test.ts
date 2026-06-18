@@ -80,4 +80,15 @@ describe('renderMethodologyHtml', () => {
     expect(html).toContain('funnel-from">16k<');
     expect(html).toContain('funnel-to">10<');
   });
+
+  it('does not crash when a model-derived field is a non-string (esc hardening)', () => {
+    const m = methodology();
+    // Simulate raw model output where timeline.day / a stat came back as numbers.
+    (m.timeline[0] as unknown as { day: unknown }).day = 7;
+    (m.aiHighlights[0] as unknown as { stat: unknown }).stat = 95;
+    expect(() => renderMethodologyHtml(proposal(), m)).not.toThrow();
+    const html = renderMethodologyHtml(proposal(), m);
+    expect(html).toContain('day-timeline');
+    expect(html).toContain('>7<'); // numeric day rendered, not crashed
+  });
 });

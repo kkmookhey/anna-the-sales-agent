@@ -57,8 +57,8 @@ function buildServiceTooling(block: MethodologyContent['services'][number], idx:
 }
 
 // Parse an arrow-style stat like "16k→10" / "16k -> 10" into its before/after halves.
-function parseArrowStat(stat: string): { from: string; to: string } | null {
-  const match = /^(.+?)\s*(?:→|->)\s*(.+)$/.exec(stat.trim());
+function parseArrowStat(stat: unknown): { from: string; to: string } | null {
+  const match = /^(.+?)\s*(?:→|->)\s*(.+)$/.exec(String(stat ?? '').trim());
   return match ? { from: (match[1] ?? '').trim(), to: (match[2] ?? '').trim() } : null;
 }
 

@@ -270,14 +270,29 @@ export class JudgmentService {
       operating_loop: ADVISE_LOOP,
     };
     const raw = await this.judge.askJson<Partial<MethodologyContent>>(system, JSON.stringify(payload), 8000);
-    const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+    // Coerce every model-returned field to its expected type — the model sometimes returns a
+    // number where a string is expected (e.g. timeline.day: 1), which would otherwise crash the
+    // string-only renderer. (esc() is also hardened as a second line of defence.)
+    const s = (v: unknown): string => (v == null ? '' : String(v));
+    const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+    const rec = (v: unknown): Record<string, unknown> =>
+      v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
     return {
-      operatingLoop: arr(raw.operatingLoop),
-      services: arr(raw.services),
-      aiHighlights: arr(raw.aiHighlights),
-      crosswalk: arr(raw.crosswalk),
-      timeline: arr(raw.timeline),
-      exclusions: arr(raw.exclusions),
+      operatingLoop: arr(raw.operatingLoop).map((p) => { const o = rec(p); return { name: s(o.name), detail: s(o.detail) }; }),
+      services: arr(raw.services).map((sv) => {
+        const o = rec(sv);
+        return {
+          serviceLine: s(o.serviceLine),
+          phases: arr(o.phases).map((p) => { const q = rec(p); return { name: s(q.name), detail: s(q.detail) }; }),
+          frameworks: arr(o.frameworks).map(s),
+          tooling: arr(o.tooling).map(s),
+          aiAugmentation: s(o.aiAugmentation),
+        };
+      }),
+      aiHighlights: arr(raw.aiHighlights).map((h) => { const o = rec(h); return { stat: s(o.stat), label: s(o.label) }; }),
+      crosswalk: arr(raw.crosswalk).map((c) => { const o = rec(c); return { area: s(o.area), frameworks: arr(o.frameworks).map(s), evidence: s(o.evidence) }; }),
+      timeline: arr(raw.timeline).map((d) => { const o = rec(d); return { day: s(o.day), milestone: s(o.milestone) }; }),
+      exclusions: arr(raw.exclusions).map(s),
     };
   }
 }
