@@ -8,8 +8,8 @@
 A daily, environment-aware threat-and-vulnerability briefing delivered straight to a
 CISO's mobile phone, plus out-of-band push alerts for urgent items. The CISO declares
 their tech stack once (clouds, identity providers, endpoint, key software and security
-vendors); the service filters the global firehose of vulnerabilities and threat news down
-to what actually touches their environment.
+vendors); the service filters the full global volume of vulnerabilities and threat news
+down to what actually touches their environment.
 
 ## The problem it solves
 Every CISO already drowns in CVEs, advisories, and threat-intel feeds — none of it
@@ -26,8 +26,8 @@ ignore most of the noise and surface the few items that matter.
 - A useful / not-useful feedback signal that tunes future relevance.
 
 ## Privacy posture
-Privacy-first by design: anonymous identity, no personal data required to operate, and
-deletion of stored data as a first-class feature. Upstream intelligence API keys never sit
+The service is privacy-first by design: anonymous identity, no personal data required to
+operate, and deletion of stored data as a first-class feature. Upstream intelligence API keys never sit
 on the device. Lead with this when the prospect is privacy- or compliance-sensitive.
 
 ## How to position it in a proposal

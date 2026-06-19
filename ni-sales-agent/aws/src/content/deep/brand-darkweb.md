@@ -18,7 +18,7 @@ customers, and credentials — and acts on them.
 - **Social-media monitoring** — scams, fraud, impersonation of the brand and its
   executives, and reputation risks across social platforms.
 
-## Action — not just alerts
+## Takedown and response
 - **Takedown support** for phishing sites, impersonation profiles, lookalike domains, and
   rogue apps — the response layer, not only detection.
 - Prioritized, validated alerts so security teams act on real exposure rather than noise.
