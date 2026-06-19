@@ -1,10 +1,13 @@
 // Maps an enquiry's service lines to the curated deep-reference files worth injecting
 // into the proposal grounding prompt. Order here is the priority order used by the cap.
-const DEEP_REFERENCES: { name: string; pattern: RegExp }[] = [
+// Only these three deep/ files exist today; service lines with no match here (e.g. mdr,
+// soc, grc, cloud, compliance, identity) intentionally get no deep reference. Extend this
+// list as new deep/ content is added.
+const DEEP_REFERENCES = [
   { name: 'deep/autonomous-pentester', pattern: /pentest|penetration|vapt|red.?team|offensive|exploit/i },
   { name: 'deep/brand-darkweb', pattern: /brand|dark.?web|darknet|takedown|threat.?intel|impersonation/i },
   { name: 'deep/ciso-threat-briefing', pattern: /ciso.?brief|threat.?brief|briefing|advisory.?feed/i },
-];
+] as const satisfies readonly { name: string; pattern: RegExp }[];
 
 const MAX_DEEP_REFERENCES = 2;
 

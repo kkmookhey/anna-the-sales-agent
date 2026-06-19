@@ -17,7 +17,7 @@ describe('selectDeepReferences', () => {
     expect(selectDeepReferences(['CISO threat briefing'])).toEqual(['deep/ciso-threat-briefing']);
   });
 
-  it('returns [] when nothing matches (stays lean)', () => {
+  it('returns [] when nothing matches', () => {
     expect(selectDeepReferences(['mdr'])).toEqual([]);
     expect(selectDeepReferences([])).toEqual([]);
   });
