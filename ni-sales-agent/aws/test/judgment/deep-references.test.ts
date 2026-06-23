@@ -70,6 +70,11 @@ describe('buildProposalContent deep-reference injection', () => {
       serviceLines: ['penetration testing', 'brand monitoring'], scope: {}, assumptions: [],
     });
     const system = askJson.mock.calls[0][0] as string;
+    // Cost guard: the assembled prompt baseline (proposal-assembly skill + capability
+    // library + JSON/output rules) is ~24KB; two deep files add ~6KB. 48000 chars leaves
+    // headroom while still catching accidental bloat (e.g. someone dumping a raw 25KB
+    // marketing brief into a deep file, or the capability library growing unchecked). This
+    // test is the only place the ceiling is defined — keep it here, not in prod code.
     expect(system.length).toBeLessThan(48000);
     expect(system).toContain('104/104');
     expect(system).toContain('takedown');
