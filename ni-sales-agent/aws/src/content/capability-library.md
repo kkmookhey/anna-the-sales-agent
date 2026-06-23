@@ -26,6 +26,9 @@
    to stated assumptions beats a confident wrong number. If you can't price responsibly, build the
    proposal through the value case and propose a short scoping call.
 6. **Match the voice in §11.** Confident, precise, a little dry. Declarative, never breathless.
+7. **Deep-reference files may be appended** below this library for offensive-security,
+   brand/dark-web, or CISO-briefing enquiries. They carry extra grounded depth — the same
+   "quote what's here, never invent" rule applies to them.
 
 ---
 
@@ -108,13 +111,19 @@ our approach/standards, and typical deliverables. Select the domain(s) matching 
 - **Breach & Attack Simulation (BAS)** — continuous validation of detection and response controls.
 - **AI Model Testing / AI red-teaming** — LLM and agent security: prompt injection, jailbreak,
   data-leakage, model abuse (MITRE ATLAS, OWASP LLM Top 10).
+- **Autonomous Pentester (Transilience AI)** — an AI-driven autonomous testing platform that runs
+  real attacks on a real Kali attack box, decides the next move, and loops — validated to strip
+  false positives. 23 agent tools, 118 on-demand capabilities, ~36 skills / 448+ exploitation
+  scenarios; **100% (104/104) on the XBOW CTF benchmark** and 100% OWASP Top 10 / OWASP LLM Top 10.
+  NI's senior pentesters stay on the rail for scope and sign-off. *(See deep reference when offensive
+  security is in scope.)*
 - *Typical deliverables:* prioritised findings (by exploitability, not just CVSS), reproduction
   steps, business-risk narrative, remediation guidance, re-test of fixed findings, executive readout.
 
 ### 4.2 Managed Security — MDR / SOC
 - **24/7 Managed Detection & Response (MDR)** run from 4 global SOCs.
-- **Extended Detection & Response (XDR)**, **SOAR-as-a-Service**, threat hunting, dark-web
-  monitoring, social-media & brand monitoring.
+- **Extended Detection & Response (XDR)**, **SOAR-as-a-Service**, threat hunting.
+  (External-threat, brand and dark-web monitoring now have their own module — see §4.8.)
 - AI-enriched triage: drift/anomaly → narrative + anomaly score + MITRE technique + next-step
   actions, with human-in-the-loop approval.
 - *Typical deliverables:* onboarding & use-case engineering, 24/7 monitoring & response, monthly
@@ -154,6 +163,26 @@ our approach/standards, and typical deliverables. Select the domain(s) matching 
   IoT and OT Security · Responsible AI · Secure Digital Transformation · Privacy program
   implementation.
 
+### 4.8 Brand Protection & Dark-Web Monitoring
+- **Dark-web & deep-web monitoring** — credential monitoring and darknet surveillance for leaked
+  employee/customer credentials and data dumps.
+- **Brand & social-media monitoring** — lookalike/typosquat domains, brand and logo abuse, rogue
+  apps, and impersonation of the brand and its executives.
+- **Takedown support** — the response layer, not just alerts: phishing sites, impersonation
+  profiles, lookalike domains and rogue apps taken down.
+- *Typical deliverables:* continuous external-threat monitoring, prioritised validated alerts,
+  takedown action, periodic exposure reporting. *(See deep reference when this is in scope.)*
+
+### 4.9 CISO Threat Briefing (mobile)
+- A daily, environment-aware threat-and-vulnerability briefing delivered to the CISO's phone, plus
+  push alerts for urgent items. The CISO declares their stack once; the service filters global
+  intel (CISA KEV, NVD, EPSS, vendor advisories) to what touches their environment.
+- Each priority item carries a "why this matters to you" explanation, a board-ready paragraph, and
+  "Ask My Team" questions — ranked by exploit signal, not raw severity.
+- Privacy-first by design (anonymous identity, data deletion as a feature).
+- *Typical deliverables:* daily stack-filtered briefing, out-of-band alerts, executive/board-ready
+  write-ups. *(See deep reference when this is in scope.)*
+
 ---
 
 ## 5. The Transilience AI edge
@@ -168,8 +197,9 @@ faster, continuous and evidence-rich; NI's human experts remain on the rail.**
 **Four product surfaces:**
 1. **Cloud Posture (CSPM):** 800+ controls across AWS/Azure/GCP, continuous drift detection,
    remediations as code/CLI.
-2. **Continuous Pen-Test:** authenticated exploit chains run continuously against staging and
-   production; findings prioritised by *exploitability*, not severity score.
+2. **Continuous Pen-Test (Autonomous Pentester):** authenticated exploit chains run continuously
+   against staging and production by an autonomous agent on a real attack box — **100% (104/104) on
+   the XBOW CTF benchmark**; findings prioritised by *exploitability*, not severity score.
 3. **Compliance Automation:** SOC 2, ISO 27001, HIPAA, PCI, EU AI Act, NIST AI RMF — evidence
    collected automatically, audit-ready continuously; voice + chat interface.
 4. **AI Security:** LLM red-teaming, AI-SPM, non-human identity governance.
