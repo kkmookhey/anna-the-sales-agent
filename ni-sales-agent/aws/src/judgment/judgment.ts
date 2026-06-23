@@ -1,5 +1,6 @@
 import type { BedrockJudge } from './bedrock.js';
 import { loadSkill, loadContent } from './skills.js';
+import { selectDeepReferences } from './deep-references.js';
 import type { ProposalContent, MethodologyContent } from '../proposal/types.js';
 import { methodologyFor, ADVISE_LOOP } from '../render/methodology-library.js';
 import type { Scope } from '../state/types.js';
@@ -171,11 +172,18 @@ export class JudgmentService {
     scope: Record<string, unknown>;
     assumptions: string[];
   }): Promise<ProposalContent> {
+    const deepRefs = selectDeepReferences(input.serviceLines);
+    const deepBlock = deepRefs.length
+      ? `## Deep Capability References (quote from here when the enquiry calls for this depth; ` +
+        `the same never-invent rule applies)\n\n` +
+        deepRefs.map((name) => loadContent(name)).join('\n\n---\n\n') + `\n\n`
+      : '';
     const system =
       `${loadSkill('proposal-assembly')}\n\n` +
       `## Capability Library (grounding — quote facts from here; never invent)\n` +
       `Use ONLY credentials, services, proof points and clients stated below. If the client's need ` +
       `isn't covered here, say so plainly — do not fabricate.\n\n${loadContent('capability-library')}\n\n` +
+      deepBlock +
       `${JSON_RULE}\n` +
       'PRICING DISCIPLINE: if the captured scope cannot justify a firm price, set ' +
       'commercials.mode="placeholder" and say pricing will be confirmed. Never fabricate a figure.\n' +
