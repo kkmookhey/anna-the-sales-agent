@@ -123,7 +123,7 @@ our approach/standards, and typical deliverables. Select the domain(s) matching 
 ### 4.2 Managed Security — MDR / SOC
 - **24/7 Managed Detection & Response (MDR)** run from 4 global SOCs.
 - **Extended Detection & Response (XDR)**, **SOAR-as-a-Service**, threat hunting.
-  (External-threat, brand and dark-web monitoring now have their own module — see §4.8.)
+  (For external-threat, brand and dark-web monitoring, see §4.8.)
 - AI-enriched triage: drift/anomaly → narrative + anomaly score + MITRE technique + next-step
   actions, with human-in-the-loop approval.
 - *Typical deliverables:* onboarding & use-case engineering, 24/7 monitoring & response, monthly
@@ -198,8 +198,8 @@ faster, continuous and evidence-rich; NI's human experts remain on the rail.**
 1. **Cloud Posture (CSPM):** 800+ controls across AWS/Azure/GCP, continuous drift detection,
    remediations as code/CLI.
 2. **Continuous Pen-Test (Autonomous Pentester):** authenticated exploit chains run continuously
-   against staging and production by an autonomous agent on a real attack box — **100% (104/104) on
-   the XBOW CTF benchmark**; findings prioritised by *exploitability*, not severity score.
+   against staging and production by an autonomous agent on a real attack box (100% / 104/104 on
+   the XBOW CTF benchmark); findings prioritised by *exploitability*, not severity score.
 3. **Compliance Automation:** SOC 2, ISO 27001, HIPAA, PCI, EU AI Act, NIST AI RMF — evidence
    collected automatically, audit-ready continuously; voice + chat interface.
 4. **AI Security:** LLM red-teaming, AI-SPM, non-human identity governance.
