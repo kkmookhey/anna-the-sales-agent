@@ -127,15 +127,23 @@ export class JudgmentService {
   }> {
     const system =
       'You triage a single email sent to a cybersecurity firm\'s sales inbox. ' +
-      'Decide if it is a genuine SALES ENQUIRY for security services (pentest/VAPT, MDR/SOC, GRC, ' +
-      'cloud security, compliance, identity, AI security). ' +
+      'Decide if it is a genuine REQUEST FOR SECURITY-SERVICES WORK (pentest/VAPT, MDR/SOC, GRC, ' +
+      'cloud security, compliance, identity, AI security) — something to scope, propose, or act on. ' +
+      'The request may come from an EXTERNAL prospect OR from an INTERNAL NI colleague/team member ' +
+      'tasking the agent (e.g. "build a proposal for X", "can we deliver this RFP", "help me answer ' +
+      'this client\'s question", "share the scope behind this proposal"). Treat an internal ' +
+      'colleague\'s genuine work request the SAME as a client enquiry. ' +
       `${JSON_RULE}\n` +
-      'Categories: "enquiry" = a direct genuine prospect enquiry; ' +
+      'Categories: "enquiry" = a direct genuine request for security-services work, from a prospect ' +
+      'OR an internal NI colleague tasking the agent; ' +
       '"forwarded_enquiry" = the body contains a FORWARDED message whose original content is a ' +
       'genuine prospect enquiry (sales/marketing forwarded it in) — extract the ORIGINAL sender ' +
       'name + email from the forwarded header block; ' +
       '"not_enquiry" = automated/notification mail, delivery receipts, out-of-office, newsletters, ' +
-      'vendors marketing TO us, internal operational chatter, or spam. ' +
+      'vendors marketing or pitching TO us, requests for our marketing collateral (e.g. an internal ' +
+      '"send me the pitch deck"), or pure non-work chatter. ' +
+      'Internal origin ALONE never makes something not_enquiry — judge by whether it is a genuine ' +
+      'work request, regardless of whether the sender is internal or external. ' +
       'Set confidence "low" when genuinely unsure. ' +
       'Output keys: category ("enquiry"|"forwarded_enquiry"|"not_enquiry"), ' +
       'original_sender (object {name, email}; OMIT unless category is forwarded_enquiry AND you can ' +
