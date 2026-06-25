@@ -130,7 +130,7 @@ Slack channel in under a minute.
 
 - Scoping questions and clarifying emails → `enquiry-scoping`.
 - "Is this reply enough?" + assumption-filling → `scope-sufficiency`.
-- Proposal deck → `proposal-assembly` (which calls `ni-branded-pptx`).
+- Proposal deck → `proposal-assembly` (produces structured content; the render worker turns it into a branded PDF via HTML/CSS templates).
 - Follow-up wording and timing → `deal-followup`.
 - All prospect-facing copy uses the **NI sales register** (see each skill). Use
   `kk-voice` only if the human explicitly tags a deal as "KK personal".

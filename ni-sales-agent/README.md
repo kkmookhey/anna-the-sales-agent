@@ -45,7 +45,7 @@ The full decision logic lives in `CLAUDE.md` — that file *is* the routine prom
 | Notify/approve | Slack | Slack MCP connector | Slack API (incoming webhook / bot token) |
 | State | per-deal JSON | `state/*.json` files | DynamoDB, one item per deal |
 | Judgment | skills | `skills/*/SKILL.md` | bundled in the deploy package, loaded via Agent SDK |
-| Deck render | ni-branded-pptx | existing skill | same skill in the Agent SDK package |
+| Deck render | render worker | HTML/CSS templates → PDF (`src/render/`) | headless-Chrome render Lambda |
 
 ## Skills
 
@@ -53,8 +53,8 @@ The full decision logic lives in `CLAUDE.md` — that file *is* the routine prom
   full NI service catalog.
 - `scope-sufficiency` — decide if a reply is enough to build a proposal; if not,
   what's missing; if borderline, what assumptions to make explicit.
-- `proposal-assembly` — turn an agreed scope into a branded deck (delegates to
-  `ni-branded-pptx`).
+- `proposal-assembly` — turn an agreed scope into a branded deck (produces structured
+  content; the render worker renders it to PDF via HTML/CSS templates).
 - `deal-followup` — the follow-up cadence and how each nudge is written.
 
 Customer-facing drafts use a professional **NI sales register**, not `kk-voice`.
