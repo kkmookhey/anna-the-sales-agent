@@ -51,7 +51,7 @@ function buildServiceTooling(block: MethodologyContent['services'][number], idx:
       <div style="margin-top:14px;">${tags}</div>
       <p class="eyebrow" style="margin-top:32px;">Tooling</p>
       <div style="margin-top:14px;">${tools}</div>
-      <p style="margin-top:32px;font-family:var(--font-display);font-size:24px;font-weight:300;color:rgba(255,255,255,0.85);max-width:1300px;line-height:1.4;">
+      <p style="margin-top:32px;font-family:var(--font-display);font-size:34px;font-weight:300;color:rgba(255,255,255,0.85);max-width:1300px;line-height:1.4;">
         <strong style="color:#FCE205;font-weight:500;">AI-augmented · </strong>${esc(block.aiAugmentation)}</p>`,
   };
 }
@@ -72,7 +72,7 @@ function buildAiAugmentedDelivery(m: MethodologyContent): SlideDesc | null {
     const cls = i === m.aiHighlights.length - 1 && m.aiHighlights.length > 1 ? 'tile tile-accent' : 'tile';
     return `<div class="${cls}">
       <h3 style="font-family:var(--font-display);font-size:46px;font-weight:600;color:#FCE205;margin:0;">${esc(h.stat)}</h3>
-      <p class="body" style="font-size:17px;">${esc(h.label)}</p></div>`;
+      <p class="body" style="font-size:30px;">${esc(h.label)}</p></div>`;
   }).join('');
   return {
     variant: 'bg-crimson-wash', dark: true, chapter: '06 · AI-augmented delivery', footLabel: 'Methodology',
@@ -117,7 +117,7 @@ function buildEffortTimeline(content: ProposalContent, m: MethodologyContent): S
           <tbody>${effortRows}
             <tr><td><strong>Total</strong></td><td></td><td style="text-align:right;"><strong>${content.effort.totalManDays}</strong></td></tr>
           </tbody></table>
-          <p style="margin-top:16px;font-family:var(--font-body);font-size:15px;color:#3a3a40;">${esc(content.effort.aiLeverageNote)}</p>
+          <p style="margin-top:16px;font-family:var(--font-body);font-size:28px;color:#3a3a40;">${esc(content.effort.aiLeverageNote)}</p>
         </div>
         <div class="day-timeline">${days}</div>
       </div>`,
@@ -129,7 +129,7 @@ function buildBoundary(m: MethodologyContent): SlideDesc | null {
   const items = m.exclusions.map((e) => `
     <div style="display:flex;gap:14px;align-items:flex-start;">
       <span style="color:#FCE205;font-size:20px;line-height:1;">↗</span>
-      <p style="font-family:var(--font-body);font-size:19px;color:rgba(255,255,255,0.85);margin:0;line-height:1.45;">${esc(e)}</p>
+      <p style="font-family:var(--font-body);font-size:30px;color:rgba(255,255,255,0.85);margin:0;line-height:1.45;">${esc(e)}</p>
     </div>`).join('');
   return {
     variant: 'bg-gradient-violet', dark: true, chapter: '09 · The boundary', footLabel: 'Methodology',

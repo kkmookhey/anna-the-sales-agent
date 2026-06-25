@@ -41,7 +41,7 @@ export function buildCover(content: ProposalContent): SlideDesc {
   const statsHtml = COVER_STATS.map((s) => `
       <div>
         <div style="font-family:var(--font-display);font-size:80px;font-weight:500;line-height:0.9;">${statValue(s.value)}</div>
-        <p style="font-family:var(--font-display);font-size:13px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin:14px 0 0;">${esc(s.label)}</p>
+        <p style="font-family:var(--font-display);font-size:24px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin:14px 0 0;">${esc(s.label)}</p>
       </div>`).join('');
 
   return {
@@ -167,8 +167,8 @@ export function buildScope(content: ProposalContent): SlideDesc | null {
 
   const rowsHtml = content.scopeRows.map((r) =>
     `<div style="display:grid;grid-template-columns:360px 1fr;gap:32px;padding:26px 8px;border-bottom:1px solid rgba(10,10,11,0.1);">
-      <div style="font-family:var(--font-display);font-size:24px;font-weight:500;color:#0A0A0B;">${esc(r.line)}</div>
-      <div style="font-family:var(--font-body);font-size:19px;color:#3a3a40;line-height:1.5;">${esc(r.detail)}</div>
+      <div style="font-family:var(--font-display);font-size:34px;font-weight:500;color:#0A0A0B;">${esc(r.line)}</div>
+      <div style="font-family:var(--font-body);font-size:30px;color:#3a3a40;line-height:1.5;">${esc(r.detail)}</div>
     </div>`,
   ).join('');
 
@@ -198,9 +198,9 @@ function buildApproach(content: ProposalContent): SlideDesc | null {
     const tileClass = isLast ? 'tile tile-accent' : 'tile';
     const phaseNum = String(i + 1).padStart(2, '0');
     return `<div class="${tileClass}">
-      <p class="mono" style="color:#FCE205;font-size:13px;letter-spacing:0.18em;text-transform:uppercase;">Phase ${phaseNum}</p>
-      <h3 style="font-family:var(--font-display);font-size:26px;font-weight:500;color:#fff;margin:0;">${esc(p.name)}</h3>
-      <p class="body" style="font-size:17px;">${esc(p.detail)}</p>
+      <p class="mono" style="color:#FCE205;font-size:24px;letter-spacing:0.18em;text-transform:uppercase;">Phase ${phaseNum}</p>
+      <h3 style="font-family:var(--font-display);font-size:36px;font-weight:500;color:#fff;margin:0;">${esc(p.name)}</h3>
+      <p class="body" style="font-size:30px;">${esc(p.detail)}</p>
     </div>`;
   }).join('');
 
@@ -228,7 +228,7 @@ export function buildDeliverables(content: ProposalContent): SlideDesc | null {
   const deliverablesHtml = content.deliverables.map((d) =>
     `<div style="display:flex;gap:16px;align-items:flex-start;">
       <i data-lucide="file-check-2" style="color:#582A90;width:28px;height:28px;stroke-width:1.5;flex:none;"></i>
-      <p style="font-family:var(--font-body);font-size:20px;color:#3a3a40;margin:0;line-height:1.5;"><strong style="color:#0A0A0B;">${esc(d)}</strong></p>
+      <p style="font-family:var(--font-body);font-size:32px;color:#3a3a40;margin:0;line-height:1.5;"><strong style="color:#0A0A0B;">${esc(d)}</strong></p>
     </div>`,
   ).join('');
 
@@ -236,7 +236,7 @@ export function buildDeliverables(content: ProposalContent): SlideDesc | null {
     ? `<div style="margin-top:52px;display:inline-flex;align-items:center;gap:20px;background:#fff;border:1px solid rgba(10,10,11,0.1);border-radius:16px;padding:28px 40px;">
         <i data-lucide="calendar-clock" style="color:#B61A3F;width:36px;height:36px;stroke-width:1.5;"></i>
         <div>
-          <p style="font-family:var(--font-display);font-size:13px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(10,10,11,0.5);margin:0;">Indicative timeline</p>
+          <p style="font-family:var(--font-display);font-size:24px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(10,10,11,0.5);margin:0;">Indicative timeline</p>
           <p style="font-family:var(--font-display);font-size:30px;font-weight:500;color:#0A0A0B;margin:6px 0 0;">${esc(content.timeline)}</p>
         </div>
       </div>`
@@ -286,7 +286,7 @@ export function buildCredentials(content: ProposalContent): SlideDesc | null {
       ${chipsHtml}
     </div>
 
-    <p style="margin-top:48px;font-family:var(--font-display);font-size:26px;font-weight:300;color:rgba(255,255,255,0.8);max-width:1200px;line-height:1.4;">
+    <p style="margin-top:48px;font-family:var(--font-display);font-size:36px;font-weight:300;color:rgba(255,255,255,0.8);max-width:1200px;line-height:1.4;">
       Every accreditation is independently audited and renewed annually. Not a checkbox — an operating standard.
     </p>`,
   };
@@ -300,7 +300,7 @@ export function buildWhyNi(content: ProposalContent): SlideDesc | null {
     const tileClass = isLast ? 'tile tile-accent' : 'tile';
     return `<div class="${tileClass}">
       <div class="pillar-icon"><i data-lucide="shield-check"></i></div>
-      <h3 style="font-family:var(--font-display);font-size:28px;font-weight:500;color:#fff;margin:0;">${esc(item)}</h3>
+      <h3 style="font-family:var(--font-display);font-size:38px;font-weight:500;color:#fff;margin:0;">${esc(item)}</h3>
     </div>`;
   }).join('');
 
@@ -334,12 +334,12 @@ function buildCommercials(content: ProposalContent): SlideDesc {
       <div class="gradient-band" style="width:160px;margin:22px 0 26px;"></div>
       <h2 class="title title-md" style="font-size:60px;">Commercial details.</h2>
     </div>
-    <p style="margin-top:36px;font-family:var(--font-body);font-size:22px;line-height:1.55;color:#3a3a40;max-width:1300px;">
+    <p style="margin-top:36px;font-family:var(--font-body);font-size:32px;line-height:1.55;color:#3a3a40;max-width:1300px;">
       Detailed commercials, terms, and PO details are provided in the attached document.
     </p>
     <div style="margin-top:36px;display:inline-flex;align-items:center;gap:14px;background:#fff;border:1px solid rgba(10,10,11,0.1);border-radius:12px;padding:18px 26px;">
       <i data-lucide="info" style="color:#582A90;width:22px;height:22px;stroke-width:1.5;"></i>
-      <span style="font-family:var(--font-body);font-size:17px;color:#3a3a40;">Pricing follows scope confirmation — no surprises, no per-finding charges.</span>
+      <span style="font-family:var(--font-body);font-size:30px;color:#3a3a40;">Pricing follows scope confirmation — no surprises, no per-finding charges.</span>
     </div>`,
   };
 }
@@ -389,15 +389,15 @@ export function buildNextSteps(content: ProposalContent): SlideDesc {
       </div>
 
       <div style="margin-top:52px;display:flex;gap:48px;flex-wrap:wrap;justify-content:center;padding:24px 56px;border-top:1px solid rgba(255,255,255,0.1);border-bottom:1px solid rgba(255,255,255,0.1);">
-        <div style="display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-size:18px;color:rgba(255,255,255,0.85);">
+        <div style="display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-size:28px;color:rgba(255,255,255,0.85);">
           <i data-lucide="mail" style="color:#FCE205;width:20px;height:20px;stroke-width:1.5;"></i>
           sales@networkintelligence.ai
         </div>
-        <div style="display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-size:18px;color:rgba(255,255,255,0.85);">
+        <div style="display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-size:28px;color:rgba(255,255,255,0.85);">
           <i data-lucide="globe" style="color:#FCE205;width:20px;height:20px;stroke-width:1.5;"></i>
           networkintelligence.ai
         </div>
-        <div style="display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-size:18px;color:rgba(255,255,255,0.85);">
+        <div style="display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-size:28px;color:rgba(255,255,255,0.85);">
           <i data-lucide="badge-check" style="color:#FCE205;width:20px;height:20px;stroke-width:1.5;"></i>
           CERT-In Empanelled · CREST Accredited
         </div>
