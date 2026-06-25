@@ -22,6 +22,10 @@ describe('buildProposalContent grounding', () => {
     const system = askJson.mock.calls[0][0] as string;
     expect(system).toContain('Capability Library');
     expect(system).toContain('PCI PIN Assessor');
+    // New capability modules must be present in the always-loaded library.
+    expect(system).toContain('Autonomous Pentester');
+    expect(system).toContain('Brand Protection & Dark-Web Monitoring');
+    expect(system).toContain('CISO Threat Briefing');
     expect(system).toMatch(/credentials \(string\[\]\)/);
     expect(system).toMatch(/transilienceEdge \(string\[\]\)/);
     expect(out.credentials).toEqual(['CREST Accredited']);

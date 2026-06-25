@@ -43,7 +43,7 @@ deck-stage { background: #050505; }
 /* Shared layout pieces */
 .eyebrow {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 28px;
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -68,7 +68,7 @@ deck-stage { background: #050505; }
 
 .subtitle {
   font-family: var(--font-body);
-  font-size: 28px;
+  font-size: 34px;
   line-height: 1.45;
   font-weight: 300;
   color: rgba(255,255,255,0.75);
@@ -76,9 +76,9 @@ deck-stage { background: #050505; }
   margin: 0;
 }
 
-.body-lg { font-size: 24px; line-height: 1.55; color: rgba(255,255,255,0.8); }
-.body { font-size: 20px; line-height: 1.55; color: rgba(255,255,255,0.75); }
-.caption { font-size: 16px; color: rgba(255,255,255,0.55); }
+.body-lg { font-size: 34px; line-height: 1.55; color: rgba(255,255,255,0.8); }
+.body { font-size: 32px; line-height: 1.55; color: rgba(255,255,255,0.75); }
+.caption { font-size: 28px; color: rgba(255,255,255,0.55); }
 
 .mono { font-family: var(--font-mono); }
 
@@ -138,7 +138,7 @@ deck-stage { background: #050505; }
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;

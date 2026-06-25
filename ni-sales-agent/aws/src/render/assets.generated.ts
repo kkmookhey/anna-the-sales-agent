@@ -263,7 +263,7 @@ deck-stage { background: #050505; }
 /* Shared layout pieces */
 .eyebrow {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 28px;
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -288,7 +288,7 @@ deck-stage { background: #050505; }
 
 .subtitle {
   font-family: var(--font-body);
-  font-size: 28px;
+  font-size: 34px;
   line-height: 1.45;
   font-weight: 300;
   color: rgba(255,255,255,0.75);
@@ -296,9 +296,9 @@ deck-stage { background: #050505; }
   margin: 0;
 }
 
-.body-lg { font-size: 24px; line-height: 1.55; color: rgba(255,255,255,0.8); }
-.body { font-size: 20px; line-height: 1.55; color: rgba(255,255,255,0.75); }
-.caption { font-size: 16px; color: rgba(255,255,255,0.55); }
+.body-lg { font-size: 34px; line-height: 1.55; color: rgba(255,255,255,0.8); }
+.body { font-size: 32px; line-height: 1.55; color: rgba(255,255,255,0.75); }
+.caption { font-size: 28px; color: rgba(255,255,255,0.55); }
 
 .mono { font-family: var(--font-mono); }
 
@@ -358,7 +358,7 @@ deck-stage { background: #050505; }
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -437,7 +437,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 .pillar-card .pillar-icon svg { width: 28px; height: 28px; stroke-width: 1.5; }
 .pillar-card .pillar-num {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 24px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #A01855;
@@ -454,7 +454,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .pillar-card .pillar-body {
   font-family: var(--font-body);
-  font-size: 17px;
+  font-size: 30px;
   line-height: 1.55;
   color: #3a3a40;
   margin: 0;
@@ -477,7 +477,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .stat-tile-lbl {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 24px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.55);
@@ -505,8 +505,8 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
   color: #FCE205;
 }
 .signal-icon svg { width: 22px; height: 22px; stroke-width: 1.5; }
-.signal-title { font-family: var(--font-display); font-size: 18px; font-weight: 500; color: #fff; margin-bottom: 4px; }
-.signal-desc { font-family: var(--font-body); font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.45; margin: 0; }
+.signal-title { font-family: var(--font-display); font-size: 29px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+.signal-desc { font-family: var(--font-body); font-size: 27px; color: rgba(255,255,255,0.6); line-height: 1.45; margin: 0; }
 
 /* Problem cards (slide 4) */
 .prob-card {
@@ -540,14 +540,14 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .prob-stat-lbl {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 25px;
   font-style: italic;
   color: rgba(10,10,11,0.55);
   margin: 0 0 12px;
 }
 .prob-name {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 34px;
   font-weight: 600;
   margin: 0;
   color: #0A0A0B;
@@ -555,7 +555,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .prob-desc {
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 28px;
   line-height: 1.5;
   color: #3a3a40;
   margin: 4px 0 0;
@@ -577,7 +577,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 .sol-head { padding: 32px 32px 24px; border-bottom: 1px solid rgba(255,255,255,0.08); }
 .sol-num {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 24px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #FF6A85;
@@ -594,7 +594,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .sol-sub {
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 28px;
   font-style: italic;
   color: rgba(255,255,255,0.55);
   margin: 8px 0 0;
@@ -603,14 +603,14 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 .sol-item {
   display: flex; align-items: center; gap: 14px;
   font-family: var(--font-body);
-  font-size: 17px;
+  font-size: 30px;
   color: rgba(255,255,255,0.85);
 }
 .sol-item svg { width: 20px; height: 20px; stroke-width: 1.5; color: rgba(255,255,255,0.5); flex-shrink: 0; }
 
 .out-pill {
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 27px;
   letter-spacing: 0.06em;
   color: rgba(255,255,255,0.85);
 }
@@ -641,7 +641,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 .agent-icon svg { width: 26px; height: 26px; stroke-width: 1.5; }
 .agent-name {
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 32px;
   font-weight: 600;
   color: #0A0A0B;
   margin: 0 0 16px;
@@ -657,14 +657,14 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .agent-metric-lbl {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 24px;
   font-style: italic;
   color: rgba(10,10,11,0.55);
   margin: 6px 0 14px;
 }
 .agent-desc {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 27px;
   line-height: 1.5;
   color: #3a3a40;
   margin: 0;
@@ -681,13 +681,13 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .tower .tower-num {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 22px;
   letter-spacing: 0.18em;
   color: rgba(252,226,5,0.7);
 }
 .tower svg { width: 22px; height: 22px; stroke-width: 1.5; color: #FCE205; margin: 8px 0 6px; display: block; }
-.tower h5 { font-family: var(--font-display); font-size: 18px; font-weight: 500; margin: 4px 0 4px; color: #fff; letter-spacing: -0.005em; }
-.tower p { font-family: var(--font-body); font-size: 13px; line-height: 1.4; color: rgba(255,255,255,0.55); margin: 0; }
+.tower h5 { font-family: var(--font-display); font-size: 29px; font-weight: 500; margin: 4px 0 4px; color: #fff; letter-spacing: -0.005em; }
+.tower p { font-family: var(--font-body); font-size: 25px; line-height: 1.4; color: rgba(255,255,255,0.55); margin: 0; }
 
 /* Capability rows (slide 8) */
 .cap-row {
@@ -705,8 +705,8 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
   margin-top: 2px;
 }
 .cap-check svg { width: 16px; height: 16px; stroke-width: 2.5; }
-.cap-row h5 { font-family: var(--font-display); font-size: 19px; font-weight: 600; color: #0A0A0B; margin: 0 0 4px; letter-spacing: -0.005em; }
-.cap-row p { font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: #3a3a40; margin: 0; }
+.cap-row h5 { font-family: var(--font-display); font-size: 30px; font-weight: 600; color: #0A0A0B; margin: 0 0 4px; letter-spacing: -0.005em; }
+.cap-row p { font-family: var(--font-body); font-size: 27px; line-height: 1.5; color: #3a3a40; margin: 0; }
 
 .metric-tile-light {
   display: grid;
@@ -728,7 +728,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
   line-height: 1;
   letter-spacing: -0.015em;
 }
-.metric-tile-light p { font-family: var(--font-body); font-size: 14px; color: #3a3a40; margin: 6px 0 0; }
+.metric-tile-light p { font-family: var(--font-body); font-size: 27px; color: #3a3a40; margin: 6px 0 0; }
 
 /* Panel cards (slide 9) */
 .panel-card {
@@ -742,23 +742,23 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 .panel-head { padding: 28px 32px 20px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
 .panel-icon { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
 .panel-icon svg { width: 28px; height: 28px; stroke-width: 1.5; }
-.panel-num { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 6px; }
+.panel-num { font-family: var(--font-mono); font-size: 24px; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 6px; }
 .panel-title { font-family: var(--font-display); font-size: 32px; font-weight: 500; color: #fff; margin: 0; letter-spacing: -0.015em; }
 .panel-list { list-style: none; counter-reset: item; padding: 16px 32px 28px; margin: 0; display: flex; flex-direction: column; gap: 12px; }
 .panel-list li { counter-increment: item; padding-left: 36px; position: relative; }
 .panel-list li::before {
   content: counter(item, decimal-leading-zero);
   position: absolute; left: 0; top: 1px;
-  font-family: var(--font-mono); font-size: 12px; color: #FCE205; letter-spacing: 0.1em;
+  font-family: var(--font-mono); font-size: 24px; color: #FCE205; letter-spacing: 0.1em;
 }
 .panel-list li span {
   font-family: var(--font-display);
-  font-size: 17px; font-weight: 500;
+  font-size: 30px; font-weight: 500;
   color: #fff;
   display: block;
   margin-bottom: 2px;
 }
-.panel-list li p { font-family: var(--font-body); font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.5; margin: 0; }
+.panel-list li p { font-family: var(--font-body); font-size: 27px; color: rgba(255,255,255,0.6); line-height: 1.5; margin: 0; }
 
 /* Funnel (slide 10) */
 .funnel-row {
@@ -772,8 +772,8 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
   min-height: 64px;
 }
 .funnel-num { font-family: var(--font-display); font-size: 36px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
-.funnel-lbl { font-family: var(--font-display); font-size: 18px; font-weight: 500; }
-.funnel-sub { font-family: var(--font-body); font-size: 14px; color: rgba(255,255,255,0.7); }
+.funnel-lbl { font-family: var(--font-display); font-size: 29px; font-weight: 500; }
+.funnel-sub { font-family: var(--font-body); font-size: 27px; color: rgba(255,255,255,0.7); }
 .funnel-yellow { box-shadow: 0 0 0 1px #B61A3F, 0 8px 32px rgba(252,226,5,0.2); }
 
 .vuln-stat {
@@ -784,7 +784,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
   padding: 24px 28px;
 }
 .vuln-num { font-family: var(--font-display); font-size: 48px; font-weight: 600; color: #B61A3F; line-height: 1; letter-spacing: -0.02em; }
-.vuln-stat p { font-family: var(--font-body); font-size: 16px; color: #3a3a40; margin: 8px 0 0; }
+.vuln-stat p { font-family: var(--font-body); font-size: 29px; color: #3a3a40; margin: 8px 0 0; }
 
 /* DLP / PAM cards (slide 11) */
 .dlp-card {
@@ -800,11 +800,11 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 .dlp-card .dlp-body { padding: 32px; flex: 1; display: flex; flex-direction: column; gap: 14px; }
 .dlp-icon { width: 48px; height: 48px; border-radius: 10px; background: rgba(252,226,5,0.1); color: #FCE205; display: flex; align-items: center; justify-content: center; }
 .dlp-icon svg { width: 24px; height: 24px; stroke-width: 1.5; }
-.dlp-name { font-family: var(--font-display); font-size: 28px; font-weight: 500; color: #fff; margin: 0; letter-spacing: -0.015em; }
+.dlp-name { font-family: var(--font-display); font-size: 38px; font-weight: 500; color: #fff; margin: 0; letter-spacing: -0.015em; }
 .dlp-stat { font-family: var(--font-display); font-size: 42px; font-weight: 600; color: #FCE205; line-height: 1; letter-spacing: -0.02em; }
-.dlp-stat-lbl { font-family: var(--font-body); font-size: 14px; color: rgba(255,255,255,0.6); margin: 4px 0 0; font-style: italic; }
+.dlp-stat-lbl { font-family: var(--font-body); font-size: 27px; color: rgba(255,255,255,0.6); margin: 4px 0 0; font-style: italic; }
 .dlp-card ul { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 10px; }
-.dlp-card ul li { font-family: var(--font-body); font-size: 15px; color: rgba(255,255,255,0.85); padding-left: 22px; position: relative; line-height: 1.4; }
+.dlp-card ul li { font-family: var(--font-body); font-size: 28px; color: rgba(255,255,255,0.85); padding-left: 22px; position: relative; line-height: 1.4; }
 .dlp-card ul li::before { content: ''; position: absolute; left: 0; top: 9px; width: 8px; height: 1px; background: #FCE205; }
 
 /* Cloud / AppSec panels (slide 12) */
@@ -819,13 +819,13 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 .appsec-icon { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
 .appsec-icon svg { width: 28px; height: 28px; stroke-width: 1.5; }
 .appsec-name { font-family: var(--font-display); font-size: 36px; font-weight: 500; color: #0A0A0B; margin: 0; letter-spacing: -0.015em; }
-.appsec-sub { font-family: var(--font-body); font-size: 15px; font-style: italic; color: rgba(10,10,11,0.55); margin: 6px 0 24px; }
+.appsec-sub { font-family: var(--font-body); font-size: 28px; font-style: italic; color: rgba(10,10,11,0.55); margin: 6px 0 24px; }
 .appsec-row { display: grid; grid-template-columns: 28px 1fr; gap: 14px; align-items: flex-start; padding: 12px 0; border-top: 1px solid rgba(10,10,11,0.06); }
 .appsec-row:first-of-type { border-top: 0; }
 .appsec-check { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; margin-top: 2px; }
 .appsec-check svg { width: 12px; height: 12px; stroke-width: 3; }
-.appsec-row h6 { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: #0A0A0B; margin: 0 0 4px; letter-spacing: -0.005em; }
-.appsec-row p { font-family: var(--font-body); font-size: 14px; line-height: 1.45; color: #3a3a40; margin: 0; }
+.appsec-row h6 { font-family: var(--font-display); font-size: 30px; font-weight: 600; color: #0A0A0B; margin: 0 0 4px; letter-spacing: -0.005em; }
+.appsec-row p { font-family: var(--font-body); font-size: 27px; line-height: 1.45; color: #3a3a40; margin: 0; }
 
 /* Phase cards (slide 13 + 14) */
 .phase-card {
@@ -836,10 +836,10 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .phase-top { padding: 24px 28px 20px; }
 .phase-num { font-family: var(--font-display); font-size: 56px; font-weight: 600; color: #FCE205; line-height: 1; letter-spacing: -0.025em; }
-.phase-name { font-family: var(--font-display); font-size: 22px; font-weight: 500; color: #fff; margin: 8px 0 0; letter-spacing: -0.005em; }
-.phase-week { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em; color: rgba(255,255,255,0.55); text-transform: uppercase; margin: 4px 0 0; }
+.phase-name { font-family: var(--font-display); font-size: 32px; font-weight: 500; color: #fff; margin: 8px 0 0; letter-spacing: -0.005em; }
+.phase-week { font-family: var(--font-mono); font-size: 24px; letter-spacing: 0.16em; color: rgba(255,255,255,0.55); text-transform: uppercase; margin: 4px 0 0; }
 .phase-body { padding: 20px 28px 28px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 8px; }
-.phase-body p { font-family: var(--font-body); font-size: 14px; line-height: 1.45; color: rgba(255,255,255,0.8); margin: 0; padding-left: 18px; position: relative; }
+.phase-body p { font-family: var(--font-body); font-size: 27px; line-height: 1.45; color: rgba(255,255,255,0.8); margin: 0; padding-left: 18px; position: relative; }
 .phase-body p::before { content: ''; position: absolute; left: 0; top: 9px; width: 10px; height: 1px; background: #FCE205; }
 
 /* SLA table (slide 15) */
@@ -849,25 +849,25 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .sla-table th {
   font-family: var(--font-display);
-  font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase;
+  font-size: 25px; letter-spacing: 0.16em; text-transform: uppercase;
   color: #fff; font-weight: 600;
   padding: 18px 20px; text-align: left;
 }
 .sla-table td {
   padding: 22px 20px;
-  font-size: 17px;
+  font-size: 30px;
   color: rgba(255,255,255,0.85);
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .sla-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
 .sla-table .sla-commit { color: #FCE205; font-weight: 600; }
-.sla-table .sla-bench { color: rgba(255,255,255,0.55); font-size: 15px; }
+.sla-table .sla-bench { color: rgba(255,255,255,0.55); font-size: 28px; }
 
 /* Bar chart (slide 16) */
 .team-bar { display: flex; height: 80px; border-radius: 8px; overflow: hidden; }
 .team-bar > div {
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); font-weight: 600; font-size: 14px;
+  font-family: var(--font-display); font-weight: 600; font-size: 27px;
   color: #fff;
 }
 
@@ -889,7 +889,7 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .elig-tile .elig-check svg { width: 14px; height: 14px; stroke-width: 3; }
 .elig-tile .elig-num { font-family: var(--font-display); font-size: 36px; font-weight: 600; color: #FCE205; line-height: 1; letter-spacing: -0.02em; }
-.elig-tile p { font-family: var(--font-body); font-size: 13px; color: rgba(255,255,255,0.7); margin: 0; }
+.elig-tile p { font-family: var(--font-body); font-size: 25px; color: rgba(255,255,255,0.7); margin: 0; }
 
 .diff-card {
   background: rgba(255,255,255,0.03);
@@ -912,8 +912,8 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
   margin-bottom: 16px;
 }
 .diff-card .diff-icon svg { width: 24px; height: 24px; stroke-width: 1.5; }
-.diff-card h4 { font-family: var(--font-display); font-size: 22px; font-weight: 500; color: #fff; margin: 0 0 8px; letter-spacing: -0.005em; }
-.diff-card p { font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.65); margin: 0; }
+.diff-card h4 { font-family: var(--font-display); font-size: 32px; font-weight: 500; color: #fff; margin: 0 0 8px; letter-spacing: -0.005em; }
+.diff-card p { font-family: var(--font-body); font-size: 27px; line-height: 1.5; color: rgba(255,255,255,0.65); margin: 0; }
 
 /* Case study cards (slide 19) */
 .case-card {
@@ -926,14 +926,14 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 .case-head { padding: 28px 28px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .case-icon { width: 48px; height: 48px; border-radius: 10px; background: rgba(252,226,5,0.1); color: #FCE205; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
 .case-icon svg { width: 24px; height: 24px; stroke-width: 1.5; }
-.case-vert { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em; color: #FCE205; text-transform: uppercase; margin: 0 0 6px; }
-.case-name { font-family: var(--font-display); font-size: 24px; font-weight: 500; color: #fff; margin: 0; letter-spacing: -0.01em; }
+.case-vert { font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.18em; color: #FCE205; text-transform: uppercase; margin: 0 0 6px; }
+.case-name { font-family: var(--font-display); font-size: 34px; font-weight: 500; color: #fff; margin: 0; letter-spacing: -0.01em; }
 .case-body { padding: 20px 28px 28px; display: flex; flex-direction: column; gap: 14px; }
-.case-block .case-lbl { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; }
+.case-block .case-lbl { font-family: var(--font-display); font-size: 22px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; }
 .case-block.csr .case-lbl { color: #FF6A85; }
 .case-block.sol .case-lbl { color: #B294FF; }
 .case-block.res .case-lbl { color: #FCE205; }
-.case-block p { font-family: var(--font-body); font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.45; margin: 4px 0 0; }
+.case-block p { font-family: var(--font-body); font-size: 27px; color: rgba(255,255,255,0.8); line-height: 1.45; margin: 4px 0 0; }
 
 /* Closing CTA (slide 20) */
 .cta-card {
@@ -946,31 +946,31 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 }
 .cta-icon { width: 64px; height: 64px; border-radius: 14px; background: linear-gradient(135deg, rgba(252,226,5,0.18), rgba(182,26,63,0.12)); border: 1px solid rgba(252,226,5,0.3); color: #FCE205; display: flex; align-items: center; justify-content: center; }
 .cta-icon svg { width: 30px; height: 30px; stroke-width: 1.5; }
-.cta-num { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.22em; color: #FCE205; text-transform: uppercase; }
-.cta-title { font-family: var(--font-display); font-size: 26px; font-weight: 500; color: #fff; margin: 0; letter-spacing: -0.005em; }
-.cta-card p { font-family: var(--font-body); font-size: 15px; line-height: 1.5; color: rgba(255,255,255,0.7); margin: 0; }
+.cta-num { font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.22em; color: #FCE205; text-transform: uppercase; }
+.cta-title { font-family: var(--font-display); font-size: 36px; font-weight: 500; color: #fff; margin: 0; letter-spacing: -0.005em; }
+.cta-card p { font-family: var(--font-body); font-size: 28px; line-height: 1.5; color: rgba(255,255,255,0.7); margin: 0; }
 
 /* ── Methodology diagram components (Slice 2) ───────────────────────── */
 .flow-band { display:flex; gap:0; align-items:stretch; margin-top:40px; }
 .flow-step { flex:1; position:relative; padding:24px 22px; background:rgba(255,255,255,0.04);
   border:1px solid rgba(255,255,255,0.10); }
 .flow-step + .flow-step { border-left:none; }
-.flow-step .flow-num { font-family:var(--font-mono); font-size:12px; letter-spacing:0.18em;
+.flow-step .flow-num { font-family:var(--font-mono); font-size: 24px; letter-spacing:0.18em;
   text-transform:uppercase; color:#FCE205; }
-.flow-step .flow-name { font-family:var(--font-display); font-size:21px; font-weight:500; color:#fff; margin:8px 0 6px; }
-.flow-step .flow-detail { font-family:var(--font-body); font-size:14px; line-height:1.45; color:rgba(255,255,255,0.7); margin:0; }
+.flow-step .flow-name { font-family:var(--font-display); font-size: 31px; font-weight:500; color:#fff; margin:8px 0 6px; }
+.flow-step .flow-detail { font-family:var(--font-body); font-size: 27px; line-height:1.45; color:rgba(255,255,255,0.7); margin:0; }
 
 .coverage-table { width:100%; border-collapse:collapse; margin-top:32px; font-family:var(--font-body); }
-.coverage-table th { text-align:left; font-family:var(--font-display); font-size:12px; letter-spacing:0.16em;
+.coverage-table th { text-align:left; font-family:var(--font-display); font-size: 24px; letter-spacing:0.16em;
   text-transform:uppercase; color:rgba(10,10,11,0.5); padding:12px 16px; border-bottom:2px solid rgba(10,10,11,0.15); }
-.coverage-table td { font-size:16px; color:#3a3a40; padding:16px; border-bottom:1px solid rgba(10,10,11,0.08); vertical-align:top; }
+.coverage-table td { font-size: 29px; color:#3a3a40; padding:16px; border-bottom:1px solid rgba(10,10,11,0.08); vertical-align:top; }
 
-.fw-tag { display:inline-block; font-family:var(--font-mono); font-size:12px; letter-spacing:0.04em;
+.fw-tag { display:inline-block; font-family:var(--font-mono); font-size: 24px; letter-spacing:0.04em;
   color:#582A90; background:rgba(88,42,144,0.08); border:1px solid rgba(88,42,144,0.25);
   border-radius:6px; padding:3px 9px; margin:3px 6px 3px 0; }
 .fw-tag.fw-tag-dark { color:#E7D9FF; background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.18); }
 
-.badge { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px;
+.badge { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size: 22px;
   letter-spacing:0.14em; text-transform:uppercase; border-radius:999px; padding:4px 12px; }
 .badge-in-scope { color:#0A0A0B; background:#FCE205; }
 .badge-critical { color:#fff; background:#B61A3F; }
@@ -978,28 +978,28 @@ export const PROPOSAL_CSS = `/* IGT proposal — extra styles atop deck.css */
 
 .crosswalk-matrix { width:100%; border-collapse:collapse; margin-top:32px; }
 .crosswalk-matrix th, .crosswalk-matrix td { padding:14px 16px; border:1px solid rgba(255,255,255,0.12);
-  font-family:var(--font-body); font-size:15px; color:rgba(255,255,255,0.85); vertical-align:top; text-align:left; }
-.crosswalk-matrix th { font-family:var(--font-display); font-size:12px; letter-spacing:0.14em;
+  font-family:var(--font-body); font-size: 28px; color:rgba(255,255,255,0.85); vertical-align:top; text-align:left; }
+.crosswalk-matrix th { font-family:var(--font-display); font-size: 24px; letter-spacing:0.14em;
   text-transform:uppercase; color:#FCE205; background:rgba(255,255,255,0.03); }
 
 .kill-chain { display:flex; gap:10px; margin-top:36px; }
 .kill-stage { flex:1; text-align:center; padding:18px 12px; border-radius:10px;
   background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12);
-  font-family:var(--font-display); font-size:16px; font-weight:500; color:#fff; }
+  font-family:var(--font-display); font-size: 29px; font-weight:500; color:#fff; }
 
 .funnel { display:flex; align-items:center; gap:28px; margin-top:36px; }
 .funnel-figure { font-family:var(--font-display); font-weight:600; line-height:0.9; }
 .funnel-from { font-size:64px; color:rgba(255,255,255,0.45); }
 .funnel-arrow { font-size:40px; color:#FCE205; }
 .funnel-to { font-size:96px; color:#FCE205; }
-.funnel-label { font-family:var(--font-display); font-size:18px; color:rgba(255,255,255,0.8); max-width:420px; }
+.funnel-label { font-family:var(--font-display); font-size: 29px; color:rgba(255,255,255,0.8); max-width:420px; }
 
 .day-timeline { margin-top:32px; border-left:2px solid rgba(10,10,11,0.15); padding-left:28px; }
 .day-row { position:relative; padding:14px 0; }
 .day-row::before { content:''; position:absolute; left:-35px; top:20px; width:12px; height:12px; border-radius:50%;
   background:#B61A3F; }
-.day-row .day-mark { font-family:var(--font-mono); font-size:13px; letter-spacing:0.12em; color:#582A90; }
-.day-row .day-text { font-family:var(--font-body); font-size:18px; color:#0A0A0B; margin:4px 0 0; }
+.day-row .day-mark { font-family:var(--font-mono); font-size: 25px; letter-spacing:0.12em; color:#582A90; }
+.day-row .day-text { font-family:var(--font-body); font-size: 29px; color:#0A0A0B; margin:4px 0 0; }
 `;
 export const DECK_STAGE_JS = `/**
  * <deck-stage> — reusable web component for HTML decks.

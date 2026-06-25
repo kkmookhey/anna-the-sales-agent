@@ -1,6 +1,6 @@
 ---
 name: proposal-assembly
-description: "Use when the NI Sales Agent has a sufficient scope and needs to produce the branded proposal deck for a prospect. Maps the captured scope and assumptions onto a Network Intelligence proposal deck and delegates rendering to the ni-branded-pptx skill."
+description: "Use when the NI Sales Agent has a sufficient scope and needs to produce the branded proposal deck for a prospect. Maps the captured scope and assumptions onto a Network Intelligence proposal deck and delegates rendering to the downstream render worker (HTML/CSS templates → branded PDF)."
 ---
 
 # Proposal Assembly
@@ -15,7 +15,7 @@ Rendering is handled downstream as a branded **PDF** — this skill only produce
 
 ## Deck structure (proposal variant of the NI deck pattern)
 
-Adapt `ni-branded-pptx`'s standard structure to a proposal. Keep it tight — 8–11 slides:
+Adapt the standard NI deck structure to a proposal. Keep it tight — 8–11 slides:
 
 1. **Title** (Dark) — "<Service line(s)> Proposal for <Company>", date, NI logo.
 2. **Understanding your need** (Light) — restate their driver and deadline in their
