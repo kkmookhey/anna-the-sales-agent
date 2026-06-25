@@ -94,6 +94,22 @@ describe('JudgmentService', () => {
     expect(out.kind).toBe('po');
   });
 
+  it('content builders enforce per-field slide-copy word budgets', async () => {
+    const askJson = vi.fn().mockResolvedValue({});
+    const svc = new JudgmentService({ askJson } as never);
+    await svc.buildProposalContent({ company: 'C', contactName: 'N', serviceLines: [], scope: {}, assumptions: [] });
+    const proposalSystem = askJson.mock.calls[0][0] as string;
+    expect(proposalSystem).toMatch(/SLIDE COPY BUDGET/);
+    expect(proposalSystem).toMatch(/pillars\.body ≤ 20 words/);
+    expect(proposalSystem).toMatch(/scopeRows\.detail ≤ 22 words/);
+
+    askJson.mockClear();
+    await svc.buildMethodologyContent({ company: 'C', contactName: 'N', serviceLines: [], scope: {}, effortLines: [], totalManDays: 0 });
+    const methodologySystem = askJson.mock.calls[0][0] as string;
+    expect(methodologySystem).toMatch(/SLIDE COPY BUDGET/);
+    expect(methodologySystem).toMatch(/phases\[\]\.detail ≤ 18 words/);
+  });
+
   it('buildProposalContent merges identity fields and returns slide content', async () => {
     const svc = new JudgmentService(
       judgeReturning({

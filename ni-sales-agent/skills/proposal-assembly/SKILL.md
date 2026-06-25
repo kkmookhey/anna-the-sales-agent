@@ -39,6 +39,10 @@ Populate `credentials` (lead with PCI QSA, PCI PIN Assessor, CREST, HITRUST) and
 
 Drop slides that don't apply (e.g. no `transilience` slide for a pure pentest deal).
 
+Slide copy must be tight and scannable — short fragments in cards, not paragraphs. The
+content builder enforces per-field word budgets; stay within them so text never crowds the
+slide.
+
 ## Structured deck fields
 
 Populate these five fields from the captured scope and the capability library — do not invent:

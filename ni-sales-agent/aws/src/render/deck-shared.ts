@@ -83,8 +83,12 @@ export function assembleSlides(descs: (SlideDesc | null)[]): string {
     const variantClass = d.variant ? `slide ${d.variant}` : 'slide';
     const styleAttr = d.sectionStyle ? ` style="${d.sectionStyle}"` : '';
     const dark = d.dark ?? false;
+    // Flowed content lives in a .slide-content wrapper (head/foot are absolute siblings) so the
+    // render step can measure it and shrink-to-fit any slide that would overflow the footer.
     return `<section class="${variantClass}"${styleAttr}>` +
-      head(dark, d.chapter ?? '') + (d.inner ?? '') + foot(dark, d.footLabel ?? '', n, total) +
+      head(dark, d.chapter ?? '') +
+      `<div class="slide-content">${d.inner ?? ''}</div>` +
+      foot(dark, d.footLabel ?? '', n, total) +
       `</section>`;
   }).join('');
 }

@@ -239,6 +239,16 @@ deck-stage { background: #050505; }
 
 .slide-full { padding: 0; }
 
+/* Flowed content wrapper — single in-flow child of .slide (head/foot are absolute).
+   Mirrors the slide's column layout so child spacing is unchanged; the render step may set
+   transform: scale() on it to shrink-to-fit a slide that would otherwise overflow. */
+.slide-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  transform-origin: top left;
+}
+
 /* Repeating bg patterns */
 .bg-grid::before {
   content: '';

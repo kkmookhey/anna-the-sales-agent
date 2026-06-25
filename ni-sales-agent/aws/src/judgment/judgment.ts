@@ -229,7 +229,12 @@ export class JudgmentService {
       'otherwise return []. ' +
       'Keep titleLine SHORT — at most 6 words. It is the cover headline rendered very ' +
       'large, so a long title wraps and crowds the layout. ' +
-      'Keep commercials.text to ONE short sentence — detailed pricing/terms live in a separate commercials document, not the deck.';
+      'Keep commercials.text to ONE short sentence — detailed pricing/terms live in a separate commercials document, not the deck. ' +
+      'SLIDE COPY BUDGET — slides are space-constrained; write tight, scannable copy and stay ' +
+      'within these per-field limits (be concrete and specific WITHIN the budget — trim filler, ' +
+      'keep the facts; prefer fragments over full sentences in cards): pillars.body ≤ 20 words; ' +
+      'signals.detail ≤ 16 words; scopeRows.detail ≤ 22 words; approachPhases.detail ≤ 20 words; ' +
+      'each deliverables item ≤ 8 words; each whyNi item ≤ 12 words; each understanding item ≤ 16 words.';
     const raw = await this.judge.askJson<Omit<ProposalContent, 'company' | 'contactName' | 'serviceLines' | 'effort'> & { effort?: unknown; rfp?: unknown }>(
       system,
       JSON.stringify(input),
@@ -286,7 +291,10 @@ export class JudgmentService {
       'crosswalk ({area, frameworks:string[], evidence:string}[] — map each engagement area to the frameworks it ' +
       'satisfies and the evidence produced), ' +
       'timeline ({day,milestone}[] — a day-by-day plan spread across the total man-days), ' +
-      'exclusions (string[] — what is deliberately out of scope).';
+      'exclusions (string[] — what is deliberately out of scope). ' +
+      'SLIDE COPY BUDGET — slides are space-constrained; write tight, scannable copy within these ' +
+      'limits: phases[].detail ≤ 18 words; operatingLoop[].detail ≤ 18 words; exclusions items ' +
+      '≤ 16 words; crosswalk.evidence ≤ 10 words; aiAugmentation ONE short sentence.';
     const payload = {
       company: input.company,
       contact: input.contactName,
