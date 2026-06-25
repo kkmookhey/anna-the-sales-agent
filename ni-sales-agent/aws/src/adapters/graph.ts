@@ -186,14 +186,17 @@ export class GraphClient {
   async latestMessageInConversation(conversationId: string): Promise<{ id: string } | null> {
     const filter = encodeURIComponent(`conversationId eq '${this.odata(conversationId)}'`);
     // No $orderby (Graph rejects $filter+$orderby on messages); fetch a page and sort client-side.
-    const path = `/users/${this.box()}/messages?$filter=${filter}&$top=25&$select=id,receivedDateTime,isDraft`;
+    // Sort by each message's latest available timestamp: our own SENT messages (e.g. the proposal)
+    // carry sentDateTime but often no receivedDateTime, so a receivedDateTime-only sort would drop
+    // them and anchor a follow-up to a stale older inbound — breaking the thread.
+    const path = `/users/${this.box()}/messages?$filter=${filter}&$top=25&$select=id,sentDateTime,receivedDateTime,isDraft`;
     const res = await this.call(path);
-    const json = (await res.json()) as { value: Array<{ id: string; receivedDateTime: string; isDraft?: boolean }> };
+    const json = (await res.json()) as { value: Array<{ id: string; sentDateTime?: string; receivedDateTime?: string; isDraft?: boolean }> };
     const live = json.value.filter((m) => !m.isDraft);
     if (!live.length) return null;
-    const newest = live.reduce((a, b) =>
-      b.receivedDateTime.localeCompare(a.receivedDateTime) > 0 ? b : a,
-    );
+    const stamp = (m: { sentDateTime?: string; receivedDateTime?: string }) =>
+      [m.sentDateTime, m.receivedDateTime].filter((t): t is string => !!t).sort().at(-1) ?? '';
+    const newest = live.reduce((a, b) => (stamp(b).localeCompare(stamp(a)) > 0 ? b : a));
     return { id: newest.id };
   }
 
