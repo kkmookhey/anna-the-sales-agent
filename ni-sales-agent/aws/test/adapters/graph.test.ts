@@ -161,6 +161,23 @@ describe('GraphClient', () => {
     expect(decodeURIComponent(url)).toContain("conversationId eq 'conv''1'");
   });
 
+  it('latestMessageInConversation anchors to our SENT message (sentDateTime only) over an older inbound', async () => {
+    // The follow-up bug: our sent proposal carries sentDateTime but no receivedDateTime, so a
+    // receivedDateTime-only sort would drop it and anchor the nudge to a stale older inbound.
+    const fetchMock = mockFetchSequence([
+      { json: { access_token: 'tok', expires_in: 3600 } },
+      { json: { value: [
+        { id: 'prospect-scope-reply', receivedDateTime: '2026-06-02T10:00:00Z', sentDateTime: '2026-06-02T09:59:00Z', isDraft: false },
+        { id: 'our-sent-proposal', sentDateTime: '2026-06-04T09:00:00Z', isDraft: false },
+      ] } },
+    ]);
+    const g = new GraphClient(creds, 'sales@networkintelligence.ai');
+    const target = await g.latestMessageInConversation('conv-1');
+    expect(target).toEqual({ id: 'our-sent-proposal' });
+    const url = fetchMock.mock.calls[1]![0] as string;
+    expect(decodeURIComponent(url)).toContain('$select=id,sentDateTime,receivedDateTime,isDraft');
+  });
+
   it('latestMessageInConversation returns null when the conversation has no live message', async () => {
     mockFetchSequence([
       { json: { access_token: 'tok', expires_in: 3600 } },

@@ -439,6 +439,51 @@ describe('runLoop — PROPOSAL_SENT reply slice', () => {
     expect(stored.parked_at).toBeNull(); // previously-parked deal cleared on proceed
   });
 
+  it('silence follow-up anchors the reply to the live thread (the sent proposal), not the stored id', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]); // no new mail = silence
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (deps.graph.latestMessageInConversation as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'our-sent-proposal' });
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'PROPOSAL_SENT', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'stale-old-id', last_inbound_at: '2026-06-02T10:00:00Z',
+        next_followup_date: '2026-06-02T00:00:00Z', followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, actions: [], flags: [], intake: { source: 'direct', recipient_verified: true } },
+    ]);
+
+    await runLoop(deps);
+
+    expect(deps.judge.draftFollowup).toHaveBeenCalledOnce();
+    expect(deps.graph.createDraftReply).toHaveBeenCalledWith('our-sent-proposal', expect.any(String));
+    const staged = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls.at(-1)![1] as string;
+    expect(staged).not.toContain('Couldn\'t re-resolve the live thread');
+  });
+
+  it('silence follow-up flags for human verification when the live thread cannot be resolved', async () => {
+    const deps = baseDeps({});
+    (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (deps.graph.latestInboundInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (deps.graph.latestMessageInConversation as ReturnType<typeof vi.fn>).mockResolvedValue(null); // unresolvable
+    (deps.repo.listDeals as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { deal_id: 'conv-1', stage: 'PROPOSAL_SENT', company: 'Novelty Wealth', contact_name: 'Shashank',
+        contact_email: 'kkmookhey@gmail.com', service_lines: ['pentest_mobile'], created_at: '2026-06-01T00:00:00Z',
+        last_inbound_id: 'stale-old-id', last_inbound_at: '2026-06-02T10:00:00Z',
+        next_followup_date: '2026-06-02T00:00:00Z', followup_count: 0,
+        scope: { service_lines: ['pentest_mobile'], asset_count: null, environment: null, compliance_driver: null,
+          timeline: null, prior_testing: null, access_model: null, authority_signal: null, region: null },
+        assumptions: [], proposal: null, actions: [], flags: [], intake: { source: 'direct', recipient_verified: true } },
+    ]);
+
+    await runLoop(deps);
+
+    expect(deps.graph.createDraftReply).toHaveBeenCalledWith('stale-old-id', expect.any(String));
+    const staged = (deps.slack.postStaging as ReturnType<typeof vi.fn>).mock.calls.at(-1)![1] as string;
+    expect(staged).toContain('Couldn\'t re-resolve the live thread');
+  });
+
   it('PO_PENDING_APPROVAL + SHIP-IT in the stored thread writes the HubSpot deal and moves to WON', async () => {
     const deps = baseDeps({});
     (deps.graph.listInbound as ReturnType<typeof vi.fn>).mockResolvedValue([]);

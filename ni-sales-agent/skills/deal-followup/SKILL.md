@@ -26,20 +26,25 @@ Before drafting a nudge, check whether the prospect actually replied since the p
 
 ## Cadence (silence only)
 
-Use `followup_cadence_days` from config (default `[3, 7, 14]` business days after
-`PROPOSAL_SENT`). One nudge per mark, `max_followups` total (default 3). Business hours
-only if configured. After the last mark with no reply → `STALLED`, ping human, stop.
+One nudge per cadence mark, `maxFollowups` total. Business hours only if configured. After
+the last mark with no reply → `STALLED`, ping human, stop.
 
-Each nudge must **add something**, never just "checking in":
+The input tells you exactly where you are: `followupNumber` of `maxFollowups`, `isFinal`,
+`daysSinceProposal`, the prospect's `driver`/`timeline`, and an optional `bookingUrl`. Use
+them — don't assume a fixed schedule. Each nudge must **add something**, never just
+"checking in":
 
-- **Nudge 1 (~day 3):** make sure it arrived; offer to walk through it on a short call;
-  invite questions on scope or assumptions.
-- **Nudge 2 (~day 7):** add value — a relevant consideration for their driver (e.g. lead
-  time if their deadline is fixed, or a note tied to their compliance date). Light
-  urgency only if real.
-- **Nudge 3 (~day 14, final):** graceful close — "I'll stop nudging; we're here whenever
-  the timing's right. Want me to keep the proposal on file or close it out?" This both
-  respects them and often surfaces the real status.
+- **Early nudge (`followupNumber` 1):** make sure it arrived; offer to walk through it on a
+  short call; invite questions on scope or assumptions.
+- **Middle nudge (not first, not `isFinal`):** add value — a relevant consideration tied to
+  their `driver`/`timeline` (e.g. lead time if their deadline is fixed, or a note tied to
+  their compliance date). Light urgency only if real.
+- **Final nudge (`isFinal: true`):** graceful close — "I'll stop nudging; we're here
+  whenever the timing's right. Want me to keep the proposal on file or close it out?" This
+  both respects them and often surfaces the real status.
+
+When `bookingUrl` is provided, fold it into the call to action ("grab a slot: <link>").
+Never invent a link when it's absent.
 
 ## Tone rules
 

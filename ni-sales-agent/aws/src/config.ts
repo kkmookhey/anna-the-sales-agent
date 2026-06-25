@@ -12,6 +12,8 @@ export interface Config {
   hubspotDealStage: string;
   hubspotOwnerId: string;
   approvedSlackUserIds: string[];
+  /** Optional scheduling link offered in follow-up nudges. Null when unset — never fabricated. */
+  bookingUrl: string | null;
 }
 
 function req(env: Record<string, string | undefined>, key: string): string {
@@ -39,5 +41,6 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     approvedSlackUserIds: req(env, 'APPROVED_SLACK_USER_IDS')
       .split(',')
       .map((s) => s.trim()),
+    bookingUrl: env.BOOKING_URL && env.BOOKING_URL !== '' ? env.BOOKING_URL : null,
   };
 }

@@ -282,11 +282,7 @@ async function advanceDeal(
           deal.parked_at = null;
           deal.last_inbound_id = latest.id;
           deal.last_inbound_at = latest.receivedDateTime;
-          const f = await judge.draftFollowup({
-            company: deal.company, contactName: deal.contact_name,
-            followupNumber: deal.followup_count + 1,
-            scopeSummary: deal.scope as unknown as Record<string, unknown>,
-          });
+          const f = await judge.draftFollowup(followupInput(deal, config, deps.now));
           return stageDraft(deal, 'FOLLOWUP_PENDING_APPROVAL', f.draft_subject, f.draft_body_html, 'clarification_staged', deps, nowIso, latest);
         }
 
@@ -344,7 +340,7 @@ async function advanceDeal(
     }
 
     case 'STAGE_FOLLOWUP': {
-      const f = await judge.draftFollowup({ company: deal.company, contactName: deal.contact_name, followupNumber: deal.followup_count + 1, scopeSummary: deal.scope as unknown as Record<string, unknown> });
+      const f = await judge.draftFollowup(followupInput(deal, config, deps.now));
       return stageDraft(deal, t.nextStage, f.draft_subject, f.draft_body_html, 'followup_staged', deps, nowIso, null);
     }
 
@@ -413,12 +409,19 @@ async function stageDraft(
   }
   // Reply target, most-durable first: a fresh prospect reply, else the live thread re-resolved
   // at send time (the stored last_inbound_id dies when its email is deleted/moved). Only fall
-  // back to the stored id when the conversation can't be resolved at all.
-  const replyToMessageId =
-    latest?.id ?? (await graph.latestMessageInConversation(deal.deal_id))?.id ?? deal.last_inbound_id;
+  // back to the stored id when the conversation can't be resolved at all — and when we do, flag
+  // it, because that stale id is exactly what makes a follow-up land as a fresh, unthreaded email.
+  const resolvedAnchor = latest?.id ?? (await graph.latestMessageInConversation(deal.deal_id))?.id ?? null;
+  const replyToMessageId = resolvedAnchor ?? deal.last_inbound_id;
   const fwd = deal.intake.source === 'forwarded';
   const toProspect = fwd ? deal.intake.proposed_recipient : undefined;
   const body = `${bodyHtml}${EMAIL_SIGN_OFF}`;
+
+  // When neither a fresh reply nor the live conversation could be resolved, we're replying to a
+  // possibly-stale stored id — surface it so a human checks the draft threads before sending.
+  const threadFlag = !config.dryRun && resolvedAnchor === null
+    ? `\n:warning: Couldn't re-resolve the live thread — verify this reply lands on the existing email trail before sending.`
+    : '';
 
   let draftRef = '(dry-run — text below)';
   let recipientFlag = '';
@@ -449,7 +452,7 @@ async function stageDraft(
     `*[STAGING — ${actionType}]* ${deal.company} / ${deal.contact_name}\n` +
     `Deal: \`${deal.deal_id}\`  Stage: ${from} → ${nextStage}\n` +
     `Summary: ${subject}\n` +
-    `Outlook draft: ${draftRef}${recipientFlag}\n` +
+    `Outlook draft: ${draftRef}${recipientFlag}${threadFlag}\n` +
     `Approve by: sending the draft${nextStage === 'PO_PENDING_APPROVAL' ? '  |  replying SHIP-IT for HubSpot writes' : ''}\n` +
     `Flags: ${deal.flags.length ? deal.flags.map((f) => f.reason).join(', ') : 'none'}\n` +
     (attachmentNote ? `${attachmentNote}\n` : '') +
@@ -591,6 +594,35 @@ function addBusinessDays(from: Date, days: number): Date {
   }
   return d;
 }
+/** Context for a follow-up nudge: which mark we're on, how long the proposal has sat, and the
+ *  prospect's own driver/timeline — so the judge can escalate tone per the deal-followup cadence. */
+function followupInput(deal: Deal, config: Config, now: Date): {
+  company: string; contactName: string; followupNumber: number; scopeSummary: Record<string, unknown>;
+  maxFollowups: number; isFinal: boolean; daysSinceProposal: number | null;
+  driver: string | null; timeline: string | null; bookingUrl: string | null;
+} {
+  const number = deal.followup_count + 1;
+  const proposalSentAt =
+    deal.proposal?.staged_at ??
+    [...deal.actions].reverse().find((a) => a.stage_to === 'PROPOSAL_SENT')?.ts ??
+    null;
+  const daysSinceProposal = proposalSentAt
+    ? Math.max(0, Math.floor((now.getTime() - new Date(proposalSentAt).getTime()) / 86_400_000))
+    : null;
+  return {
+    company: deal.company,
+    contactName: deal.contact_name,
+    followupNumber: number,
+    scopeSummary: deal.scope as unknown as Record<string, unknown>,
+    maxFollowups: config.maxFollowups,
+    isFinal: number >= config.maxFollowups,
+    daysSinceProposal,
+    driver: deal.scope.compliance_driver,
+    timeline: deal.scope.timeline,
+    bookingUrl: config.bookingUrl,
+  };
+}
+
 interface AttachmentExtract { text: string; note: string | null; flags: string[] }
 
 /**

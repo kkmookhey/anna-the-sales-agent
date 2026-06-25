@@ -107,8 +107,19 @@ export class JudgmentService {
     contactName: string;
     followupNumber: number;
     scopeSummary: Record<string, unknown>;
+    maxFollowups?: number;
+    isFinal?: boolean;
+    daysSinceProposal?: number | null;
+    driver?: string | null;
+    timeline?: string | null;
+    bookingUrl?: string | null;
   }): Promise<FollowupResult> {
     const system = `${loadSkill('deal-followup')}\n\n${JSON_RULE}\n` +
+      'The input gives followupNumber out of maxFollowups, isFinal (true ⇒ write the final, ' +
+      'graceful break-up nudge: offer to keep the proposal on file or close it out), ' +
+      'daysSinceProposal, and the prospect\'s driver/timeline — use them to choose the right ' +
+      'escalation per the cadence above and to reference their specific context. If bookingUrl is ' +
+      'non-null, include it as a short "grab a slot" call to action; never invent a link when it is null. ' +
       'Output keys: draft_subject (string), draft_body_html (string). ' +
       NO_SIGN_OFF_RULE + ' ' + HTML_BODY_RULE;
     return this.judge.askJson<FollowupResult>(system, JSON.stringify(input));

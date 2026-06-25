@@ -25,6 +25,11 @@ describe('loadConfig', () => {
     expect(c.maxFollowups).toBe(3);
     expect(c.dryRun).toBe(false);
     expect(c.approvedSlackUserIds).toEqual(['U07AN5FR86B']);
+    expect(c.bookingUrl).toBeNull(); // optional — absent from base env
+  });
+
+  it('reads an optional BOOKING_URL when present', () => {
+    expect(loadConfig({ ...base, BOOKING_URL: 'https://cal.ni/kk' }).bookingUrl).toBe('https://cal.ni/kk');
   });
 
   it('throws when a required key is missing', () => {

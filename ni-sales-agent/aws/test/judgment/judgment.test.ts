@@ -72,6 +72,22 @@ describe('JudgmentService', () => {
     });
   });
 
+  it('draftFollowup forwards cadence context and instructs the final-nudge break-up', async () => {
+    const askJson = vi.fn().mockResolvedValue({ draft_subject: 'Re: Proposal', draft_body_html: '<p>x</p>' });
+    const svc = new JudgmentService({ askJson } as never);
+    await svc.draftFollowup({
+      company: 'Novelty Wealth', contactName: 'Shashank', followupNumber: 3, scopeSummary: {},
+      maxFollowups: 3, isFinal: true, daysSinceProposal: 14, driver: 'CERT-In', timeline: '30 days',
+      bookingUrl: 'https://cal.ni/kk',
+    });
+    const [system, userJson] = askJson.mock.calls[0];
+    expect(system).toMatch(/isFinal/);
+    expect(system).toMatch(/break-up/i);
+    expect(system).toMatch(/bookingUrl/);
+    const sent = JSON.parse(userJson as string);
+    expect(sent).toMatchObject({ isFinal: true, maxFollowups: 3, daysSinceProposal: 14, driver: 'CERT-In', bookingUrl: 'https://cal.ni/kk' });
+  });
+
   it('classifyProposalReply returns the model\'s classification kind', async () => {
     const svc = new JudgmentService(judgeReturning({ kind: 'po' }));
     const out = await svc.classifyProposalReply({ subject: 'Re: Proposal', reply: 'Approved — PO attached, please proceed.' });
