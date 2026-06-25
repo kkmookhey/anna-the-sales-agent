@@ -38,9 +38,12 @@ export async function buildDeps(env: Record<string, string | undefined> = proces
 
   // In dry-run, wrap the write-capable adapters so no persistent write can leak (DynamoDB,
   // S3, HubSpot). Reads pass through. Enforced at the seam so no loop call site can regress.
-  const hubspot = config.dryRun ? dryRunHubspot(new HubSpotClient(hubspotCreds['token']!)) : new HubSpotClient(hubspotCreds['token']!);
-  const repo = config.dryRun ? dryRunRepo(DealRepo.fromEnv(config.dealsTable, config.region)) : DealRepo.fromEnv(config.dealsTable, config.region);
-  const s3 = config.dryRun ? dryRunS3(DeckStore.fromEnv(env['DECKS_BUCKET']!, config.region)) : DeckStore.fromEnv(env['DECKS_BUCKET']!, config.region);
+  const realHubspot = new HubSpotClient(hubspotCreds['token']!);
+  const realRepo = DealRepo.fromEnv(config.dealsTable, config.region);
+  const realS3 = DeckStore.fromEnv(env['DECKS_BUCKET']!, config.region);
+  const hubspot = config.dryRun ? dryRunHubspot(realHubspot) : realHubspot;
+  const repo = config.dryRun ? dryRunRepo(realRepo) : realRepo;
+  const s3 = config.dryRun ? dryRunS3(realS3) : realS3;
 
   return {
     config,
